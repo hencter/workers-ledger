@@ -333,6 +333,19 @@
    显隐由 `hidden` 属性控制，不再用 CSS 类切 display——
    `hidden` 是语义状态，读屏与爬虫据此认定内容不存在；纯 CSS 隐藏做不到这一点。
    这段媒体查询只负责抽屉的**版式**（固定定位、铺满、可滚动）。 */
+
+/* 首帧就要把抽屉藏起来，否则会闪一下。
+   为什么必须用 CSS 而不是交给脚本：`html.js` 是本页 <head> 里的内联脚本同步加上的，
+   早于侧栏那段 HTML 被解析；而抽屉脚本跑在 DOMContentLoaded，那时侧栏**已经绘制过一帧**。
+   于是慢一点的手机上能看到「侧栏出来 → 又被藏掉」的闪动。
+   只在有脚本时生效（.js），无脚本场景侧栏照常平铺可见。
+   注意别用 display:none —— 那会让 hidden/inert 之外再多一个显隐来源，
+   而且 display 的切换无法过渡。 */
+@media (max-width: 1079px) {
+  .js .sidebar[data-drawer-panel] { visibility: hidden; }
+  .js .sidebar[data-drawer-panel]:not([hidden]) { visibility: visible; }
+}
+
 @media (max-width: 1079px) {
   .js .nav-toggle { display: inline-flex; }
   .js body.nav-open { overflow: hidden; }

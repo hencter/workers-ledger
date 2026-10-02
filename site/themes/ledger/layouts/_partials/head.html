@@ -46,14 +46,26 @@
 {{ partial "head/og.html" . }}
 {{ partial "head/jsonld.html" . }}
 
-{{- /* 在样式之前先定好主题，避免深色模式闪一下白 */ -}}
+{{- /* 在样式之前先定好主题，避免深色模式闪一下白。
+       这段必须留在 head 内联、且必须在样式表之前：它是 assets/js/theme.js（defer 模块）
+       跑不到的时机——那时首帧已经画完，就晚了。
+       同时把 color-scheme 也定下来：它决定滚动条与原生表单控件用亮色还是暗色。
+       只在 meta 里写死 `light dark` 时，浏览器按**系统**偏好画，于是手动选过深色
+       而系统是浅色的读者会看到滚动条先亮后暗。 */ -}}
 <script>
   (function () {
+    var root = document.documentElement;
+    var theme = null;
     try {
       var saved = localStorage.getItem('ledger-theme');
-      if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+      if (saved === 'dark' || saved === 'light') theme = saved;
     } catch (e) {}
-    document.documentElement.classList.add('js');
+    if (theme) root.dataset.theme = theme;
+    // 没手动选过就跟随系统，选过就用保存值
+    var isDark = theme ? theme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var meta = document.querySelector('meta[name="color-scheme"]');
+    if (meta) meta.setAttribute('content', isDark ? 'dark' : 'light');
+    root.classList.add('js');
   })();
 </script>
 

@@ -11,6 +11,20 @@ html {
   scroll-padding-top: calc(var(--topbar-h) + 12px);
 }
 
+/* 切换深浅色的那一帧里压掉所有过渡与动画。
+   当前全局没有颜色过渡，但个别组件有（输入框边框、箭头旋转），主题一变它们会各自
+   过渡一下，观感就是「闪一下」。脚本只在切换的瞬间挂上这个类，下一帧即移除，
+   所以不影响正常的悬停、展开等过渡。
+   放在 base.css 而不是 layout.css：它管的是全局行为，与版式无关。 */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+}
+
 /* 滚动条。
    默认滚动条在深色模式下会露出一条亮灰硬边，和纸墨配色冲突（浅色下也偏突兀，
    侧栏那条尤其明显）。这里统一改成细的、只有一个拇指、悬停才明显。
