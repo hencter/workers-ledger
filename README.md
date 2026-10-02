@@ -2,7 +2,14 @@
 
 **法律允许什么，是一回事；拿不拿得到，是另一回事。**
 
-**在线读：[workersledger.cn](https://workersledger.cn/)** · 离线单文件：[下载 index.html](index.html) · PDF：[下载（709 页）](https://github.com/hencter/workers-ledger/releases/download/pdf-latest/%E5%8A%B3%E5%8A%A8%E8%80%85%E7%9A%84%E8%B4%A6%E6%9C%AC.pdf)
+**在线读：[workersledger.cn](https://workersledger.cn/)** · 离线单文件：[下载 index.html](index.html) · PDF：[下载最新版](https://github.com/hencter/workers-ledger/releases/download/pdf-latest/work-rights-cn-book.pdf)
+
+> PDF 随正文更新自动重建，下载地址固定不变。页数会随条目增减变化，所以这里不写死页数——
+> 想知道当前规模跑 `node tools/看板.mjs`，想核对 PDF 本身跑 `node tools/verify-pdf.mjs dist/劳动者的账本.pdf`。
+>
+> 附件名用 ASCII（`work-rights-cn-book.pdf`）是有原因的：实测 `gh release upload` 对**非 ASCII
+> 文件名会剔除字符**（上传 `重命名实验-临时.pdf` 会得到 `-.pdf`），而本地文件名一直是对的，
+> 于是公布的链接会 404 且不易察觉。中文书名留在页面上，文件名交给 ASCII。
 
 中国大陆劳动权益与合规的循证指南。这本书记的是后一件事：一条权利要真正落到手里，需要什么证据、受什么时效约束、在哪些地方口径不一致、主张强度到底是「可主张」「可推定」还是「倡导性」。
 

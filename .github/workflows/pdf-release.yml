@@ -141,6 +141,8 @@ jobs:
           }
 
       - name: 把 PDF 汇总写进运行摘要
+        env:
+          ASSET_NAME: work-rights-cn-book.pdf
         run: |
           set -euo pipefail
           size=$(stat -c%s dist/劳动者的账本.pdf)
@@ -149,14 +151,22 @@ jobs:
             echo ""
             echo "- 文件大小：$((size / 1024 / 1024)) MB"
             echo "- 链接基准：${SITE_BASE}"
-            echo "- 下载地址：https://github.com/${GITHUB_REPOSITORY}/releases/download/pdf-latest/%E5%8A%B3%E5%8A%A8%E8%80%85%E7%9A%84%E8%B4%A6%E6%9C%AC.pdf"
+            echo "- 下载地址：https://github.com/${GITHUB_REPOSITORY}/releases/download/pdf-latest/${ASSET_NAME}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       # 固定 tag 的 Release：下载链接不变。与同类项目做法一致。
       # 注意 --latest=false：PDF 不该抢走仓库的 latest 标记。
+      #
+      # ⚠ 附件名必须是 **ASCII**。实测 `gh release upload` 对非 ASCII 文件名会剔除字符：
+      #   上传 `重命名实验-临时.pdf` 得到 `-.pdf`（中文全没了）。于是
+      #   `gh release upload dist/劳动者的账本.pdf` 落到一个与公布地址不符的名字上，
+      #   而**本地文件名一直是对的**，作者看不出问题——直到有人点下载链接发现 404。
+      #   站点上的显示文字仍用中文书名，下载文件名用 ASCII 不影响任何人。
+      #   （本地工具的产物名保持中文，那是给人看的；只在发布这一步改成 ASCII。）
       - name: 发布到 Release（固定 tag：pdf-latest）
         env:
           GH_TOKEN: ${{ github.token }}
+          ASSET_NAME: work-rights-cn-book.pdf
         run: |
           set -euo pipefail
           tag=pdf-latest
@@ -166,4 +176,14 @@ jobs:
           else
             gh release create "$tag" --title "《劳动者的账本》PDF（正文更新后自动重建）" --notes "$notes" --latest=false
           fi
-          gh release upload "$tag" dist/劳动者的账本.pdf --clobber
+          cp "dist/劳动者的账本.pdf" "dist/${ASSET_NAME}"
+          gh release upload "$tag" "dist/${ASSET_NAME}" --clobber
+          # 删掉历史上因非 ASCII 名被剔字符而残留的附件（例如 "-.pdf"、"default.pdf"），
+          # 否则它们会一直挂在 Release 上，让人以为有多个版本。
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" \
+            --jq '.assets[] | select(.name != "'"${ASSET_NAME}"'") | .id' \
+            | while read -r id; do
+                [ -n "$id" ] && gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${id}" || true
+              done
+          echo "Release 附件："
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" --jq '.assets[] | "  \(.name)  \(.size) 字节"'
