@@ -1,22 +1,6 @@
-baseURL = 'https://example.org/'
-locale = 'en-US'
-title = 'My New Hugo Project'
-
-[menus]
-  [[menus.main]]
-    name = 'Home'
-    pageRef = '/'
-    weight = 10
-
-  [[menus.main]]
-    name = 'Posts'
-    pageRef = '/posts'
-    weight = 20
-
-  [[menus.main]]
-    name = 'Tags'
-    pageRef = '/tags'
-    weight = 30
+# 主题自身的配置。主题配置只允许设置 params / menu / outputs / outputFormats / mediaTypes，
+# 其余键会被忽略，所以站点级设置一律放 site/hugo.toml。
+# 这里刻意不声明任何 [menus]：菜单会与站点菜单合并，骨架里的演示菜单会污染导航。
 
 [module]
   [module.hugoVersion]

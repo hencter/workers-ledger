@@ -1,3 +1,57 @@
+# 站点配置。
+#
+# 正文由 tools/build-site.mjs 从仓库根目录的 book/ 生成到 site/content/，
+# 每次生成都会整体重建该目录，所以不要手工往里加页面。
+#
+# 版本前提：本机 Hugo v0.167.0 extended。0.158 起 languageCode 已改名为 locale。
+
+# 本地预览用的默认地址；发布时由 CI 用 --baseURL 覆盖成真实地址
 baseURL = 'https://example.org/'
-locale = 'en-us'
-title = 'My New Hugo Project'
+title = '劳动权益与合规指南'
+
+locale = 'zh-CN'
+timeZone = 'Asia/Shanghai'
+hasCJKLanguage = true
+enableGitInfo = true
+enableRobotsTXT = true
+
+# 本书不用标签分类，关掉以免生成空的分类页
+disableKinds = ['taxonomy', 'term']
+
+theme = 'workrights'
+
+[params]
+  # 首页副标题：一句话说清这本书记的是什么
+  tagline = '法律允许什么，是一回事；拿不拿得到，是另一回事'
+  # 首页导语（markdown）。生成脚本不会重写 hugo.toml，所以这段文案是稳的
+  homeIntro = '''
+本书面向在中国大陆工作的人：在职的、要离职的、被欠薪的、受了工伤的、正在准备签合同的。
+
+它记的不是「法律允许什么」，而是**一条权利要真正落到手里，还需要什么**——要什么证据、受什么时效约束、在哪些地方口径不一致、主张强度到底是「可主张」「可推定」还是「倡导性」。
+
+每一条都标了三样东西：**效力位阶**（这条依据在仲裁委和法院面前的地位）、**主张强度**（你能不能真拿到手）、**举证难度**（打赢要什么证据、好不好拿）。三者各管一件事，不互相替代。
+'''
+  # 首页底部说明
+  homeNote = '全书条目按时效与地方口径标注，核对日期逐条可查。制度会变，用之前请核对当地现行规定。'
+  # 核对日期超过这个天数即提示「待复核」，仓库约定值（见 docs/条目规范.md）
+  staleDays = 180
+  # 全站免责声明
+  disclaimer = '本指南为通用信息整理，不构成针对具体个案的法律意见。涉及自身权益的处理，请咨询当地劳动人事争议仲裁委员会、人力资源社会保障部门或执业律师。'
+  # 页面底部生成说明
+  generatorNote = '正文以 book/ 下的 markdown 为唯一真相源，站点内容由 tools/build-site.mjs 生成。'
+
+# 首页除 HTML 外再输出一份归一化的检索索引（供前端筛选与全文检索）
+[outputs]
+  home = ['HTML', 'JSON']
+  section = ['HTML']
+
+[outputFormats.JSON]
+  mediaType = 'application/json'
+  baseName = 'entries'
+  isPlainText = true
+  isHTML = false
+  noUgly = true
+
+# 「最后更新」优先取 git 提交时间，取不到再退回 front matter 的 date
+[frontmatter]
+  lastmod = [':git', 'lastmod', 'date']

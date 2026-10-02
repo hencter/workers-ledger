@@ -1,15 +1,8 @@
-@import "components/header.css";
-@import "components/footer.css";
-
-body {
-  color: #222;
-  font-family: sans-serif;
-  line-height: 1.5;
-  margin: 1rem;
-  max-width: 768px;
-}
-
-a {
-  color: #00e;
-  text-decoration: none;
-}
+/* 样式入口：css.Build（esbuild）会把下面这些 @import 内联成一个文件，
+   最终只有一个 CSS 请求，且没有任何外部资源。 */
+@import "tokens.css";
+@import "base.css";
+@import "layout.css";
+@import "components.css";
+@import "search.css";
+@import "print.css";

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="劳动权益与合规指南">
+  <rect width="64" height="64" rx="12" fill="#a3372a"/>
+  <rect x="6.5" y="6.5" width="51" height="51" rx="8" fill="none" stroke="#fff8f4" stroke-opacity=".55" stroke-width="2"/>
+  <text x="32" y="43" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="30" font-weight="700" fill="#fff8f4">劳</text>
+</svg>
