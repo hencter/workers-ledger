@@ -189,17 +189,38 @@ checkTrue('首页脚本来自本站指纹文件', /js\/main\.[0-9a-f]+\.js/.test
 const robotsTag = /<meta[^>]*name=(?:"robots"|robots)[^>]*>/.exec(homeHtml)?.[0] || ''
 checkTrue('production 环境输出 index, follow', robotsTag.includes('index, follow'))
 
-// —— 首页版面：主区用满宽度、且只作用于首页 ——
-// 背景：.main 原来对所有页面都写死 max-width ≈ 780px，而栅格给主区的是 1fr，
-// 宽屏下右侧白掉约 350px，并让 search.css 里 1240px / 1400px 两条断点永远触发不了。
-// 现在首页用 .main--home 放宽，条目页与节页保留阅读上限。下面三条把这个区分钉住。
+// —— 版面宽度 ——
+// 背景与实测数据见 site/checks/measure-layout.mjs（用无头浏览器量真实盒子）。
+// 前两轮是靠「可用宽度 − 上限」估算的，漏掉了 .entry 上还有第二层上限，
+// 于是得出「已经修好」的结论而用户看到的留白仍然很大。所以这里不再猜规则，
+// 改成断言「主区没有宽度上限」+「正文块有合理行宽上限」，再用独立脚本量几何。
+//
+// 注：原来还有一条「首页 main 带 main--home 修饰类」。主区统一不限宽之后
+// 首页不再需要这个修饰类，`.main--home` 规则也一并删除——那条断言随之作废，
+// 留着一个恒为假的条件比没有更糟。baseof.html 里的类名保留着（无害，
+// 将来若又要区分首页与正文页的宽度，直接加规则即可）。
 const cssHref = /href=(?:"([^"]*\/css\/[^"]+\.css)"|([^ >]*\/css\/[^ >]+\.css))/.exec(cssTag)
 const cssRel = cssHref ? (cssHref[1] || cssHref[2]) : ''
 const cssBody = cssRel
   ? fs.readFileSync(path.join(OUT, decodeURIComponent(stripBase(cssRel)).replace(/^\//, '')), 'utf8')
   : ''
-checkTrue('首页 main 带 main--home 修饰类', /<main[^>]*class=(?:"main main--home"|main main--home)/.test(homeHtml))
-checkTrue('产物 CSS 含 .main--home{max-width:none}', /\.main--home\{max-width:none\}/.test(cssBody))
+// 注意：不要写 /\.main\{[^}]*max-width/ 这类跨块的负向匹配。源文件里 .main 有多条规则
+// （通用、宽屏、窄屏），压缩后首尾相接，负向匹配会跨到相邻规则上去，导致断言恒为假——
+// 我第一次就是这么写的，反向测试时才发现它一直红着。
+// 改成检查宽屏那条规则的正面特征：它应只有 padding，带上限时会是 padding:…;max-width:…
+checkTrue(
+  '宽屏 .main 规则不含 max-width 上限',
+  /\.main\{padding:var\(--sp-7\) 0 var\(--sp-8\)\}/.test(cssBody) &&
+    !/\.main\{padding:var\(--sp-7\) 0 var\(--sp-8\);max-width/.test(cssBody),
+)
+checkTrue('产物 CSS 含 .entry{max-width:none}（条目页不再被二次限宽）', /\.entry\{max-width:none\}/.test(cssBody))
+checkTrue('连续正文块有行宽上限（说人话 / 备注）', /\.lead-block\{[^}]*max-width:66rem/.test(cssBody))
+const sidebarM = /--sidebar-w:\s*(\d+)px/.exec(cssBody)
+checkTrue('产物 CSS 能读到 --sidebar-w', Boolean(sidebarM))
+checkTrue(
+  `侧栏宽度不低于 304px（当前 ${sidebarM ? sidebarM[1] : '?'}px）`,
+  Boolean(sidebarM) && Number(sidebarM[1]) >= 304,
+)
 checkTrue(
   '产物 CSS 的结果两列断点不高于 1120px（否则宽屏仍是单列）',
   /@media\(min-width:(\d+)px\)\{\.results__list\{grid-template-columns:repeat\(2/.test(cssBody) &&

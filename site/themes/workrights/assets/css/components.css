@@ -262,7 +262,13 @@
 .stat__k { font-size: var(--fs-100); color: var(--text-dim); letter-spacing: .06em; }
 
 /* —— 条目页 —— */
-.entry { max-width: var(--measure); }
+/* 不要在这里再限一次宽度。
+   原来这里是 max-width: var(--measure)，等于给正文加了第二道上限：主区已经放宽，
+   条目内容仍被卡在 54rem。真实测量（site/checks/measure-layout.mjs，1512px 视口）：
+   解开前主区 908px、右侧留到视口边 196px；解开后主区用满 1028px、右侧约 76px。
+   字段表（dt/dd 两列）本身不会因为变宽而难读，值列变宽只是少折几行。
+   真正需要限制行宽的是连续正文，那由 .prose 与 .lead-block 自己控制。 */
+.entry { max-width: none; }
 .entry__eyebrow {
   display: flex;
   flex-wrap: wrap;
@@ -283,6 +289,11 @@
   border-left: 4px solid var(--accent);
   border-radius: var(--radius-m);
   box-shadow: var(--shadow-s);
+  /* 说人话块与备注块是连续正文，需要限制行宽；主区本身已经不限宽了。
+     正文字号 --fs-400 是固定 16.5px，所以 1920px 视口下若跟着撑满，
+     每行约 89 个汉字，读起来太累。66rem ≈ 每行 62 字，是舒服的上限。
+     字段表（dt/dd 两列）与卡片列表不受这条影响，仍然吃满可用宽度。 */
+  max-width: 66rem;
 }
 .lead-block__label {
   margin: 0 0 var(--sp-2);
@@ -330,6 +341,9 @@
   background: var(--bg-sunk);
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius-m);
+  /* 与 .lead-block 同一行宽上限：备注是长文本，宽屏撑满会难读。
+     备注块内的「版本陷阱」之类长段落是本书信息密度最高的部分，更该好读。 */
+  max-width: 66rem;
 }
 .note__label {
   margin: 0 0 var(--sp-2);

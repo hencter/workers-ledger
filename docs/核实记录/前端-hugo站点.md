@@ -322,3 +322,105 @@ grep -rn 'HAHAHUGOSHORTCODE' site/content/
 `public/` 只剩一份指纹资源，产物形态 6 项全过。
 
 **建议**：本地预览改用 `hugo server -D --renderToMemory`，它不写 `public/`，可与验收构建共存。
+
+---
+
+## 追加改动（第二轮反馈：正文留白、导航样式）
+
+上一轮我只放宽了首页主区，**条目页与节页刻意保留 46rem 上限**，理由是一行太宽难读。
+用户第二轮截图指出正文仍大量留白。这次查清了两件事。
+
+### 一、留白有两层上限，我上一轮只发现一层
+
+| 层 | 规则 | 位置 |
+| --- | --- | --- |
+| 第一层 | `.main { max-width: calc(var(--measure) + var(--sp-7)) }` | `layout.css` |
+| 第二层 | `.entry { max-width: var(--measure) }` | `components.css` |
+
+外加 `base.css` 里 `.prose { max-width: var(--measure) }`——它同时作用在
+「说人话」块和「备注」块上，把长文本也压窄了。
+
+**两层叠加**：只改一层看不出效果。我上一轮改了第一层并放行首页，条目页仍被第二层卡住，
+于是用户看到的留白几乎没变。这正是我上一轮误判的原因。
+
+### 二、改用真实测量，不再靠算术推断
+
+前两轮的数值都是「可用宽度 − 上限」算出来的。这个办法在有两层上限时会得出错误结论，
+而且我算出的「120px」与实际「196px」也不符。
+
+新增 `site/checks/measure-layout.mjs`：起无头 Chrome/Edge，走 DevTools 协议读元素的
+`getBoundingClientRect` 与 `getComputedStyle`，量真实渲染盒子。无第三方依赖
+（Node 内置 WebSocket + `node:http`）。
+
+**它自己踩了一个坑，值得记**：第一版用 `file://` 打开产物，量出「主区宽 1496px、
+边距 8px、没有侧栏」——看着像样式写错了，实际是**样式表根本没加载**。
+因为站点按子路径部署，产出的资源地址是 `/work-rights-cn/css/…` 这种根绝对路径，
+`file://` 下浏览器会去文件系统根目录找。改成脚本内置一个只读静态服务后才量到真实布局。
+**没有测量就问「修好了吗」是不可靠的；测量本身也要先确认测的是真东西。**
+
+### 三、改法：主区不限宽，行宽交给内容自己管
+
+| 文件 | 改动 |
+| --- | --- |
+| `layout.css` | 删掉 `.main` 的 `max-width`（含宽屏那条），主区用满栅格给的宽度 |
+| `components.css` | `.entry { max-width: none }`——去掉第二层上限 |
+| `base.css` | 删掉 `.prose { max-width: var(--measure) }` |
+| `components.css` | `.lead-block`、`.note` 各加 `max-width: 66rem` |
+| `tokens.css` | `--measure` 保留给 `.hero` / `.page-head` / `.home-intro`（导语仍需窄行） |
+| `baseof.html` | 移除已无用的 `main--home` 修饰类 |
+
+为什么不给 `.lead-block` / `.note` 也放开：正文字号 `--fs-400` 是**固定 16.5px**，
+1920px 视口下内容宽 1468px 折合每行约 89 个汉字，读起来太累。66rem ≈ 每行 62 字，
+是舒服的上限。**留白不该靠牺牲可读性去换**——卡片列表、字段表吃满宽度，
+连续正文保留合理行宽。
+
+### 四、真实测量结果（1512px 视口）
+
+| 页面 | 改动前主区 | 改动后主区 | 右侧留到视口边 |
+| --- | --- | --- | --- |
+| 首页 | 1060px | 1060px | 44px |
+| 节页 | 908px | 1060px | 196px → **44px** |
+| 条目页 | 908px | 1060px | 196px → **44px** |
+
+1920px 视口下节页从 908px（右侧 604px 空白）变为 1468px（右侧 44px）。
+`.lead-block` 在 1512px 下量得 1056px 宽、`max-width: 1056px`（即 66rem），
+字段表仍为 1060px —— 正是预期的分工。
+
+### 五、断言：这一轮栽了两次，都是「不会失败的断言」
+
+`render-check.mjs` 加了宽度相关断言，两次写错、两次靠**反向验证**发现：
+
+1. 第一版写 `! /\.main\{[^}]*max-width/.test(cssBody)`。压缩后注释与规则在同一个大块里，
+   正则跨过去匹配到我写在注释里的「原来这里写死 max-width: …」，于是**恒为假**，
+   校验一直红着，我却以为是产物问题。
+2. 第二版写 `! /\.main\{padding:[^}]*max-width/`。源文件里 `.main` 有多条规则
+   （通用、宽屏、窄屏），压缩后首尾相接，负向匹配又跨到相邻规则上，**仍然恒为假**。
+
+最终改为检查宽屏那条规则的**正面特征**，并要求它不带 `max-width`：
+`/\.main\{padding:var\(--sp-7\) 0 var\(--sp-8\)\}/` 命中且
+`/\.main\{padding:var\(--sp-7\) 0 var\(--sp-8\);max-width/` 不命中。
+
+**方法上的教训**：断言写完必须反向验证一次（把缺陷造回去，看它是否真的变红）。
+一个恒为假的负向断言和一个恒为真的正向断言一样糟——它们都会让人以为这个点被守住了。
+这一轮三条宽度断言、上一轮的 `main--home` 断言，都是这样验过或删掉的。
+
+### 六、导航样式
+
+侧栏一并调整（用户第一轮反馈「导航条样式不好看」）：
+
+- 侧栏宽度 `288px → 320px`
+- 一级节标题字号 `15px → 14px`，序号列 `1.7em → 1.5em`
+- 条目字号 `13.5px → 13px`；条目行改用**悬挂缩进**，圆点只占首行行首，
+  折行部分用满宽度（原来是 flex 两列，换行后文字停在圆点右侧，白白让出宽度）
+- 当前项从「整块底色 + inset 阴影」改为「浅底色 + 左侧 3px 圆角红条」，视觉重量更轻
+
+### 七、复现命令
+
+```bash
+node tools/build-site.mjs
+node tools/check-site.mjs
+node tools/build-offline.mjs
+node tools/build-prod.mjs
+cd site && node checks/render-check.mjs        # 113 项断言
+cd site && node checks/measure-layout.mjs      # 真实几何，默认 1512 / 1280 / 1920
+```

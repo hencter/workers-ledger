@@ -76,8 +76,10 @@ strong { font-weight: 700; }
 
 img { max-width: 100%; height: auto; }
 
-/* 正文区（首页导语、条目说明等 markdown 渲染结果） */
-.prose { max-width: var(--measure); }
+/* 正文区（首页导语、条目说明、备注等 markdown 渲染结果）。
+   不再在这里限宽：.prose 同时用在「说人话」块和「备注」块上，而「备注」是长文本，
+   卡在 46rem 会让宽屏下的备注在右侧留一大块空。行宽由容器决定，
+   真正需要窄行的导语由 .home-intro / .hero 自己控制。 */
 .prose > *:last-child { margin-bottom: 0; }
 .prose ul, .prose ol { padding-left: 1.35em; margin: 0 0 var(--sp-4); }
 .prose li { margin-bottom: var(--sp-2); }
