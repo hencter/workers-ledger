@@ -1,1 +1,11 @@
-<p>Copyright {{ now.Year }}. All rights reserved.</p>
+<footer class="footer">
+  <div class="footer__inner">
+    <p>{{ site.Params.disclaimer }}</p>
+    <div class="footer__meta">
+      <span>{{ site.Params.generatorNote }}</span>
+      <span>本次构建：{{ now.Format "2006-01-02 15:04" }}</span>
+      <a href="{{ site.Home.RelPermalink }}">全部条目</a>
+      <a href="{{ site.Home.RelPermalink }}#search">检索与筛选</a>
+    </div>
+  </div>
+</footer>

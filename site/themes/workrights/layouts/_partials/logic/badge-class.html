@@ -1,0 +1,23 @@
+{{- /* 归一分档 → CSS 类后缀
+       入参：dict "kind" ("claim"|"proof") "v" 归一分档
+       颜色只在两处定义：主张强度（可主张=绿 / 可推定=琥珀 / 倡导性=灰）、
+       举证难度（易 / 中 / 难）。 */ -}}
+{{- $kind := .kind -}}
+{{- $v := .v | default "" -}}
+{{- $out := "" -}}
+{{- if eq $kind "claim" -}}
+  {{- $out = "claim-weak" -}}
+  {{- if eq $v "可主张" -}}
+    {{- $out = "claim-strong" -}}
+  {{- else if eq $v "可推定" -}}
+    {{- $out = "claim-mid" -}}
+  {{- end -}}
+{{- else -}}
+  {{- $out = "proof-mid" -}}
+  {{- if eq $v "易" -}}
+    {{- $out = "proof-easy" -}}
+  {{- else if eq $v "难" -}}
+    {{- $out = "proof-hard" -}}
+  {{- end -}}
+{{- end -}}
+{{- return $out -}}

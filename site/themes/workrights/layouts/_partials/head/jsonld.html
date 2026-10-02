@@ -1,0 +1,39 @@
+{{- /* 结构化数据：先把数据组装成一个对象，再交给 jsonify 输出，
+       不要传入已经序列化好的字符串（那样会在 script 里变成带引号的字符串字面量）。
+       内页用 Article，挂在 Book 之下；首页用 WebSite。 */ -}}
+{{- $desc := .Description | default "" -}}
+{{- if not $desc }}{{ $desc = site.Params.tagline | default site.Title }}{{ end -}}
+{{- $ld := dict
+  "@context" "https://schema.org"
+  "@type" "WebSite"
+  "name" site.Title
+  "description" $desc
+  "inLanguage" site.Language.Locale
+  "url" site.Home.Permalink
+-}}
+{{- if .IsPage -}}
+  {{- $published := "" -}}
+  {{- with .Date }}{{ if not .IsZero }}{{ $published = .Format "2006-01-02" }}{{ end }}{{ end -}}
+  {{- $ld = dict
+    "@context" "https://schema.org"
+    "@type" "Article"
+    "headline" .Title
+    "description" $desc
+    "inLanguage" site.Language.Locale
+    "url" .Permalink
+    "datePublished" $published
+    "mainEntityOfPage" (dict "@type" "WebPage" "@id" .Permalink)
+    "isPartOf" (dict "@type" "Book" "name" site.Title "url" site.Home.Permalink)
+  -}}
+{{- else if .IsSection -}}
+  {{- $ld = dict
+    "@context" "https://schema.org"
+    "@type" "CollectionPage"
+    "name" .Title
+    "description" $desc
+    "inLanguage" site.Language.Locale
+    "url" .Permalink
+    "isPartOf" (dict "@type" "Book" "name" site.Title "url" site.Home.Permalink)
+  -}}
+{{- end -}}
+<script type="application/ld+json">{{ $ld | jsonify }}</script>

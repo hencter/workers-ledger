@@ -1,0 +1,9 @@
+{
+ "compilerOptions": {
+  "paths": {
+   "*": [
+    "..\\themes\\workrights\\assets\\*"
+   ]
+  }
+ }
+}

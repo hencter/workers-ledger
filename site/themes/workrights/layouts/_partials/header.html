@@ -1,2 +1,14 @@
-<h1>{{ site.Title }}</h1>
-{{ partial "menu.html" (dict "menuID" "main" "page" .) }}
+<header class="topbar">
+  <a class="topbar__brand" href="{{ site.Home.RelPermalink }}">
+    <span class="seal" aria-hidden="true">劳</span>
+    <span class="topbar__title">{{ site.Title }}<span class="topbar__sub">中国大陆 · 循证指南</span></span>
+  </a>
+  <span class="topbar__spacer"></span>
+  <div class="topbar__actions">
+    <button class="tbtn nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="sidebar">目录</button>
+    <a class="tbtn tbtn--primary" href="{{ site.Home.RelPermalink }}#search">检索</a>
+    <button class="tbtn" type="button" data-theme-toggle aria-pressed="false" aria-label="切换深浅色">
+      <span aria-hidden="true">◐</span><span data-theme-label>深色</span>
+    </button>
+  </div>
+</header>

@@ -1,0 +1,106 @@
+{{- /* 条目字段表（条目页专用）。顺序与 docs/条目规范.md 的字段顺序一致：
+       适用 / 成本 / 收益 /（说人话在正文）/ 依据 / 效力位阶 / 主张强度 / 举证难度 /
+       地域 / 时效 / 来源 / 核对日期 / 备注。字段是纯文本，直接输出即可（模板会自动转义）。 */ -}}
+{{- $p := . -}}
+{{- $claimRaw := $p.Params.主张强度 | default "" -}}
+{{- $claim := partial "logic/claim.html" (dict "v" $claimRaw) -}}
+{{- $claimClass := partial "logic/badge-class.html" (dict "kind" "claim" "v" $claim) -}}
+{{- $proofRaw := $p.Params.举证难度 | default "" -}}
+{{- $proof := partial "logic/proof.html" (dict "v" $proofRaw) -}}
+{{- $proofClass := partial "logic/badge-class.html" (dict "kind" "proof" "v" $proof) -}}
+{{- $level := 0 -}}
+{{- if eq $proof "易" }}{{ $level = 1 }}{{ else if eq $proof "中" }}{{ $level = 2 }}{{ else if eq $proof "难" }}{{ $level = 3 }}{{ end -}}
+{{- $proofParts := split $proofRaw "——" -}}
+{{- $proofRest := "" -}}
+{{- if gt (len $proofParts) 1 }}{{ $proofRest = delimit (after 1 $proofParts) "——" }}{{ end -}}
+{{- $cost := $p.Params.成本标签 | default dict -}}
+{{- $date := $p.Params.核对日期 | default "" -}}
+<dl class="fields">
+  <div class="field">
+    <dt>适用</dt>
+    <dd>{{ $p.Params.适用 }}</dd>
+  </div>
+  <div class="field">
+    <dt>成本</dt>
+    <dd>{{ $p.Params.成本 }}</dd>
+  </div>
+  <div class="field">
+    <dt>收益</dt>
+    <dd>{{ $p.Params.收益 }}</dd>
+  </div>
+  <div class="field">
+    <dt>依据</dt>
+    <dd>{{ $p.Params.依据 }}</dd>
+  </div>
+  <div class="field">
+    <dt>效力位阶</dt>
+    <dd>{{ $p.Params.效力位阶 }}</dd>
+  </div>
+  <div class="field">
+    <dt>主张强度</dt>
+    <dd>
+      <p class="field__inline">
+        <span class="badge badge--claim badge--{{ $claimClass }}"><span class="badge__v">{{ $claim | default "未标注" }}</span></span>
+        <span class="field__rest">{{ $claimRaw }}</span>
+      </p>
+    </dd>
+  </div>
+  <div class="field">
+    <dt>举证难度</dt>
+    <dd>
+      <p class="field__inline">
+        <span class="badge badge--proof badge--{{ $proofClass }}">
+          <span class="meter meter--{{ $level }}" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="badge__v">{{ $proof | default "未标注" }}</span>
+        </span>
+      </p>
+      {{- with $proofRest }}<p class="field__rest">{{ . }}</p>{{ end }}
+    </dd>
+  </div>
+  <div class="field">
+    <dt>地域</dt>
+    <dd>{{ $p.Params.地域 }}</dd>
+  </div>
+  <div class="field">
+    <dt>时效</dt>
+    <dd>{{ $p.Params.时效 }}</dd>
+  </div>
+  <div class="field">
+    <dt>来源</dt>
+    <dd>{{ partial "source.html" (dict "v" $p.Params.来源) }}</dd>
+  </div>
+  <div class="field">
+    <dt>核对日期</dt>
+    <dd>
+      {{- with $date }}
+      <time class="badge badge--date" datetime="{{ . }}" data-checked="{{ . }}">
+        <span class="badge__k">最后一次核对</span>
+        <span class="badge__v">{{ . }}</span>
+        <span class="badge__flag" data-stale-flag hidden>待复核</span>
+      </time>
+      <span class="field__rest">超过半年未复核即提示「待复核」。</span>
+      {{- else }}
+      未标注
+      {{- end }}
+    </dd>
+  </div>
+  <div class="field">
+    <dt>备注</dt>
+    <dd>{{ $p.Params.备注 }}</dd>
+  </div>
+  <div class="field">
+    <dt>成本标签</dt>
+    <dd>
+      <ul class="chips">
+        {{- range $key := slice "钱" "时间" "毅力" "收益" }}
+          {{- with index $cost $key }}
+          <li class="chip"><b>{{ $key }}</b>{{ partial "logic/cost-label.html" (dict "key" $key "v" .) }}</li>
+          {{- end }}
+        {{- end }}
+        {{- with index $cost "口径" }}
+        <li class="chip chip--scope"><b>口径</b>{{ partial "logic/cost-label.html" (dict "key" "口径" "v" .) }}</li>
+        {{- end }}
+      </ul>
+    </dd>
+  </div>
+</dl>

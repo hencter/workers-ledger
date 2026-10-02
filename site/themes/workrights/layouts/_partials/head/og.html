@@ -1,0 +1,21 @@
+{{- /* Open Graph 与 Twitter 卡片。canonical、og:url 一律用 .Permalink 绝对地址。 */ -}}
+{{- $desc := .Description | default "" -}}
+{{- if not $desc }}{{ $desc = site.Params.tagline | default site.Title }}{{ end -}}
+{{- $type := "website" -}}
+{{- if .IsPage }}{{ $type = "article" }}{{ end -}}
+<meta property="og:type" content="{{ $type }}">
+<meta property="og:title" content="{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }}{{ end }}">
+<meta property="og:description" content="{{ $desc }}">
+<meta property="og:site_name" content="{{ site.Title }}">
+<meta property="og:locale" content="{{ replace site.Language.Locale "-" "_" }}">
+{{- with .Permalink }}
+<meta property="og:url" content="{{ . }}">
+{{- end }}
+{{- if .IsPage }}
+  {{- with .Date }}{{ if not .IsZero }}
+<meta property="article:published_time" content="{{ .Format "2006-01-02" }}">
+  {{- end }}{{ end }}
+{{- end }}
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }}{{ end }}">
+<meta name="twitter:description" content="{{ $desc }}">

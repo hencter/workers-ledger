@@ -111,6 +111,10 @@
 }
 .badge__k { opacity: .75; }
 .badge__v { font-weight: 700; }
+.badge__flag { font-weight: 700; }
+.badge__flag[hidden] { display: none; }
+.badges--lg .badge { font-size: var(--fs-200); padding: 5px 12px; }
+.badges--lg .meter { height: 13px; }
 
 /* 主张强度：可主张=绿、可推定=琥珀、倡导性=灰 */
 .badge--claim-strong {
@@ -209,6 +213,12 @@
 /* —— 首页导语 —— */
 .home-intro { max-width: var(--measure); }
 .home-intro p { font-size: var(--fs-400); color: var(--text-mid); }
+.home-note {
+  max-width: var(--measure);
+  margin: var(--sp-5) 0 0;
+  font-size: var(--fs-200);
+  color: var(--text-dim);
+}
 
 /* —— 证据分布 —— */
 .dist {
@@ -364,6 +374,19 @@
   margin: 0 0 var(--sp-5);
 }
 .listbar__hint { font-size: var(--fs-100); color: var(--text-dim); }
+.listbar input[type="search"] {
+  flex: 1 1 20rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  background: var(--bg-card);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-300);
+}
+.listbar input[type="search"]:focus { border-color: var(--accent); }
 
 .empty {
   padding: var(--sp-6);

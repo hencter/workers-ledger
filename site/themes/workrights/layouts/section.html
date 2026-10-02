@@ -1,10 +1,24 @@
 {{ define "main" }}
+{{- $pages := .Pages.ByWeight -}}
+<header class="page-head">
+  <p class="page-head__eyebrow">第 {{ .Weight }} 节 · {{ len $pages }} 条</p>
   <h1>{{ .Title }}</h1>
-  {{ .Content }}
-  {{ range .Pages }}
-    <section>
-      <h2><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></h2>
-      {{ .Summary }}
-    </section>
-  {{ end }}
+  {{- with .Description }}<p class="page-head__desc">{{ . }}</p>{{ end }}
+  <div class="rule" aria-hidden="true"></div>
+  {{- with .Content }}<div class="prose">{{ . }}</div>{{ end }}
+</header>
+
+<div class="listbar">
+  <label class="visually-hidden" for="local-filter">在本节内快速过滤</label>
+  <input id="local-filter" type="search" data-local-filter autocomplete="off"
+         placeholder="在本节 {{ len $pages }} 条里按关键词过滤…">
+  <span class="listbar__hint" data-local-count>共 {{ len $pages }} 条</span>
+  <a class="listbar__hint" href="{{ site.Home.RelPermalink }}#search">到全部条目里多维筛选 →</a>
+</div>
+
+{{- range $pages }}
+  {{ partial "entry-card.html" (dict "page" . "showSection" false) }}
+{{- end }}
+
+<p class="empty" data-local-empty hidden>本节没有匹配的条目。</p>
 {{ end }}

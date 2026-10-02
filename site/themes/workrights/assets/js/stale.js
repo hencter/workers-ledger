@@ -4,20 +4,29 @@
 
 export const DEFAULT_STALE_DAYS = 180
 
+/** 把 YYYY-MM-DD 解析成「本地零点」。
+    不用 Date.parse('2026-10-03T00:00:00')：V8 把这种不带时区的日期时间串按 UTC 解释，
+    算出来会比本地零点差一个时区（在东八区正好差 8 小时，180 天的阈值会被提前触发）。 */
+function parseDay(isoDate) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(isoDate == null ? '' : isoDate).trim())
+  if (!match) return null
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
 /** 判断一个核对日期是否已经超过复核周期 */
 export function isStale(isoDate, staleDays = DEFAULT_STALE_DAYS, now = new Date()) {
-  if (!isoDate) return false
-  const t = Date.parse(String(isoDate).length <= 10 ? `${isoDate}T00:00:00` : isoDate)
-  if (Number.isNaN(t)) return false
-  const days = (now.getTime() - t) / 86400000
+  const start = parseDay(isoDate)
+  if (!start) return false
+  const days = (now.getTime() - start.getTime()) / 86400000
   return days > staleDays
 }
 
 /** 距今多少天（整数，未来为负数） */
 export function daysSince(isoDate, now = new Date()) {
-  const t = Date.parse(String(isoDate).length <= 10 ? `${isoDate}T00:00:00` : isoDate)
-  if (Number.isNaN(t)) return null
-  return Math.floor((now.getTime() - t) / 86400000)
+  const start = parseDay(isoDate)
+  if (!start) return null
+  return Math.floor((now.getTime() - start.getTime()) / 86400000)
 }
 
 export function applyStale(root = document) {

@@ -1,10 +1,58 @@
 {{ define "main" }}
+<article class="entry">
+  {{- $p := . -}}
+  {{- $sec := .CurrentSection -}}
+  <nav class="crumbs" aria-label="面包屑">
+    <a href="{{ site.Home.RelPermalink }}">全部条目</a>
+    <span class="crumbs__sep" aria-hidden="true">/</span>
+    {{- with $sec }}
+    <a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a>
+    <span class="crumbs__sep" aria-hidden="true">/</span>
+    {{- end }}
+    <span aria-current="page">{{ $p.Params.节号 }}.{{ $p.Params.条号 }}</span>
+  </nav>
+
+  <p class="entry__eyebrow">
+    <span>{{ $p.Params.节名 }}</span>
+    <span>条目 {{ $p.Params.节号 }}.{{ $p.Params.条号 }}</span>
+  </p>
   <h1>{{ .Title }}</h1>
 
-  {{ $dateMachine := .Date | time.Format "2006-01-02T15:04:05-07:00" }}
-  {{ $dateHuman := .Date | time.Format ":date_long" }}
-  <time datetime="{{ $dateMachine }}">{{ $dateHuman }}</time>
+  {{ partial "badges.html" (dict "page" . "size" "lg") }}
 
-  {{ .Content }}
-  {{ partial "terms.html" (dict "taxonomy" "tags" "page" .) }}
+  <div class="lead-block">
+    <p class="lead-block__label">说人话</p>
+    <div class="lead-block__body prose">{{ .Content }}</div>
+  </div>
+
+  {{ partial "entry-fields.html" . }}
+
+  {{- /* 同节翻页按 weight（即条号）顺序算，与节页列表顺序一致。
+         不用 .PrevInSection/.NextInSection：它们的排序语义与 weight 顺序相反，
+         标出来会出现「上一条」指向更大条号的情况。 */ -}}
+  {{- $siblings := slice -}}
+  {{- with $sec }}{{ $siblings = .Pages.ByWeight }}{{ end -}}
+  {{- $idx := -1 -}}
+  {{- range $i, $sib := $siblings -}}
+    {{- if eq $sib $ -}}{{- $idx = $i -}}{{- end -}}
+  {{- end -}}
+  {{- $prev := "" -}}
+  {{- $next := "" -}}
+  {{- if gt $idx 0 -}}{{- $prev = index $siblings (sub $idx 1) -}}{{- end -}}
+  {{- if and (ge $idx 0) (lt $idx (sub (len $siblings) 1)) -}}{{- $next = index $siblings (add $idx 1) -}}{{- end -}}
+  <nav class="pager" aria-label="同节翻页">
+    {{- with $prev }}
+    <a class="pager__prev" href="{{ .RelPermalink }}">
+      <span class="pager__k">上一条 · {{ .Params.节号 }}.{{ .Params.条号 }}</span>
+      <span class="pager__t">{{ .Title }}</span>
+    </a>
+    {{- end }}
+    {{- with $next }}
+    <a class="pager__next" href="{{ .RelPermalink }}">
+      <span class="pager__k">下一条 · {{ .Params.节号 }}.{{ .Params.条号 }}</span>
+      <span class="pager__t">{{ .Title }}</span>
+    </a>
+    {{- end }}
+  </nav>
+</article>
 {{ end }}

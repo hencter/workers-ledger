@@ -1,9 +1,18 @@
 {{ define "main" }}
-  {{ .Content }}
-  {{ range site.RegularPages }}
-    <section>
-      <h2><a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a></h2>
-      {{ .Summary }}
-    </section>
-  {{ end }}
+<section class="hero">
+  <p class="hero__eyebrow">中国大陆 · 劳动权益与合规</p>
+  <h1 class="hero__title">{{ site.Title }}</h1>
+  <p class="hero__tagline">{{ site.Params.tagline }}</p>
+  <div class="rule" aria-hidden="true"></div>
+  <div class="home-intro prose">{{ site.Params.homeIntro | markdownify }}</div>
+  {{- with .Content }}
+  <div class="home-intro prose">{{ . }}</div>
+  {{- end }}
+  {{- with site.Params.homeNote }}
+  <p class="home-note">{{ . }}</p>
+  {{- end }}
+</section>
+
+{{ partial "distribution.html" . }}
+{{ partial "search-app.html" . }}
 {{ end }}
