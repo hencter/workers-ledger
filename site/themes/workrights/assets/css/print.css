@@ -1,0 +1,9 @@
+/* 打印：去掉导航与筛选，只留正文 */
+@media print {
+  :root { --bg: #fff; --bg-card: #fff; --text: #000; --text-mid: #333; --line: #ccc; }
+  .topbar, .sidebar, .footer, .app, .pager, .rule, .crumbs { display: none !important; }
+  .main { padding: 0; max-width: none; }
+  .card, .lead-block, .note { border: 1px solid #ccc; box-shadow: none; break-inside: avoid; }
+  .entry { max-width: none; }
+  a[href^="http"]::after { content: "（" attr(href) "）"; font-size: .8em; color: #555; word-break: break-all; }
+}

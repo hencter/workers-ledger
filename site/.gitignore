@@ -1,0 +1,4 @@
+# Hugo 构建产物与缓存，不进版本库
+public/
+resources/
+.hugo_build.lock

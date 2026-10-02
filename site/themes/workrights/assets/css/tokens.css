@@ -1,0 +1,149 @@
+/* 设计令牌：颜色、字号、间距、圆角、阴影。
+   浅色为默认，深色跟随系统；用户手动切换时用 html[data-theme] 覆盖。 */
+
+:root {
+  color-scheme: light dark;
+
+  /* 字体：全部走系统字体栈，不引任何外部字体文件 */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC",
+    "WenQuanYi Micro Hei", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas,
+    "Liberation Mono", monospace;
+
+  --fs-100: 12.5px;
+  --fs-200: 13.5px;
+  --fs-300: 15px;
+  --fs-400: 16.5px;
+  --fs-500: 18px;
+  --fs-600: 21px;
+  --fs-700: clamp(24px, 3.4vw, 30px);
+  --fs-900: clamp(30px, 5vw, 44px);
+
+  --lh-tight: 1.32;
+  --lh-snug: 1.55;
+  --lh-body: 1.85;
+
+  --measure: 46rem;
+  --sidebar-w: 288px;
+  --topbar-h: 58px;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 22px;
+  --sp-6: 30px;
+  --sp-7: 44px;
+  --sp-8: 64px;
+
+  --radius-s: 6px;
+  --radius-m: 12px;
+  --radius-l: 16px;
+  --radius-pill: 999px;
+
+  /* 浅色：暖纸底 + 墨字 + 印泥红 */
+  --bg: #f4f1ea;
+  --bg-card: #fffdf9;
+  --bg-sunk: #eae5db;
+  --bg-hover: #efe9df;
+  --text: #1a1917;
+  --text-mid: #56524b;
+  --text-dim: #837d73;
+  --line: #e1dacf;
+  --line-strong: #cdc3b4;
+  --accent: #a3372a;
+  --accent-ink: #8b2e22;
+  --accent-wash: #f5e6e1;
+  --focus: #2b6ca8;
+
+  /* 主张强度：可主张=绿 / 可推定=琥珀 / 倡导性=灰 */
+  --claim-strong: #196f45;
+  --claim-strong-wash: #e2f1e8;
+  --claim-mid: #9c6a0c;
+  --claim-mid-wash: #faeeda;
+  --claim-weak: #666b71;
+  --claim-weak-wash: #ebecee;
+
+  /* 举证难度：易 / 中 / 难（难要显眼） */
+  --proof-easy: #196f6b;
+  --proof-easy-wash: #e0f0ef;
+  --proof-mid: #9c6a0c;
+  --proof-mid-wash: #faeeda;
+  --proof-hard: #bc3527;
+  --proof-hard-wash: #fbe4e0;
+
+  --shadow-s: 0 1px 2px rgba(40, 33, 24, .06);
+  --shadow-m: 0 2px 4px rgba(40, 33, 24, .05), 0 12px 28px -18px rgba(40, 33, 24, .32);
+}
+
+/* 深色：石板底 + 暖白字 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161a;
+    --bg-card: #1b1f25;
+    --bg-sunk: #0f1114;
+    --bg-hover: #23282f;
+    --text: #e9e5de;
+    --text-mid: #b1aba1;
+    --text-dim: #8a847a;
+    --line: #2a2f37;
+    --line-strong: #3b414a;
+    --accent: #e08a76;
+    --accent-ink: #efa893;
+    --accent-wash: #35211d;
+    --focus: #7ab3e8;
+
+    --claim-strong: #6ecf99;
+    --claim-strong-wash: #16301f;
+    --claim-mid: #dbab5a;
+    --claim-mid-wash: #332611;
+    --claim-weak: #9aa0a7;
+    --claim-weak-wash: #24282d;
+
+    --proof-easy: #6bc9c1;
+    --proof-easy-wash: #12302e;
+    --proof-mid: #dbab5a;
+    --proof-mid-wash: #332611;
+    --proof-hard: #f08b78;
+    --proof-hard-wash: #3a1c17;
+
+    --shadow-s: 0 1px 2px rgba(0, 0, 0, .5);
+    --shadow-m: 0 2px 6px rgba(0, 0, 0, .45), 0 16px 32px -20px rgba(0, 0, 0, .8);
+  }
+}
+
+/* 手动切到深色 */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14161a;
+  --bg-card: #1b1f25;
+  --bg-sunk: #0f1114;
+  --bg-hover: #23282f;
+  --text: #e9e5de;
+  --text-mid: #b1aba1;
+  --text-dim: #8a847a;
+  --line: #2a2f37;
+  --line-strong: #3b414a;
+  --accent: #e08a76;
+  --accent-ink: #efa893;
+  --accent-wash: #35211d;
+  --focus: #7ab3e8;
+
+  --claim-strong: #6ecf99;
+  --claim-strong-wash: #16301f;
+  --claim-mid: #dbab5a;
+  --claim-mid-wash: #332611;
+  --claim-weak: #9aa0a7;
+  --claim-weak-wash: #24282d;
+
+  --proof-easy: #6bc9c1;
+  --proof-easy-wash: #12302e;
+  --proof-mid: #dbab5a;
+  --proof-mid-wash: #332611;
+  --proof-hard: #f08b78;
+  --proof-hard-wash: #3a1c17;
+
+  --shadow-s: 0 1px 2px rgba(0, 0, 0, .5);
+  --shadow-m: 0 2px 6px rgba(0, 0, 0, .45), 0 16px 32px -20px rgba(0, 0, 0, .8);
+}

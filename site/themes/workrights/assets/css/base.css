@@ -1,0 +1,133 @@
+/* 基础排版：重置 + 中文正文规则。
+   中文规则三条：行高不挤、不两端对齐、允许标点挤压。 */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--topbar-h) + 12px);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-400);
+  line-height: var(--lh-body);
+  /* 中文段落不两端对齐 */
+  text-align: left;
+  /* 标点挤压与中西文自动间距：支持的浏览器更整齐，不支持的忽略 */
+  text-spacing-trim: space-first;
+  text-autospace: normal;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  margin: 0 0 var(--sp-3);
+  line-height: var(--lh-tight);
+  font-weight: 700;
+  letter-spacing: .01em;
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--fs-700); letter-spacing: .005em; }
+h2 { font-size: var(--fs-600); }
+h3 { font-size: var(--fs-500); }
+h4 { font-size: var(--fs-400); }
+
+p { margin: 0 0 var(--sp-4); }
+
+a {
+  color: var(--accent-ink);
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  text-underline-offset: .22em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover { text-decoration-color: currentColor; }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: var(--sp-6) 0;
+}
+
+code, kbd, samp {
+  font-family: var(--font-mono);
+  font-size: .92em;
+  background: var(--bg-sunk);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  padding: .1em .35em;
+}
+
+strong { font-weight: 700; }
+
+img { max-width: 100%; height: auto; }
+
+/* 正文区（首页导语、条目说明等 markdown 渲染结果） */
+.prose { max-width: var(--measure); }
+.prose > *:last-child { margin-bottom: 0; }
+.prose ul, .prose ol { padding-left: 1.35em; margin: 0 0 var(--sp-4); }
+.prose li { margin-bottom: var(--sp-2); }
+.prose blockquote {
+  margin: 0 0 var(--sp-4);
+  padding: var(--sp-2) 0 var(--sp-2) var(--sp-4);
+  border-left: 3px solid var(--line-strong);
+  color: var(--text-mid);
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-300);
+}
+.prose th, .prose td {
+  border: 1px solid var(--line);
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  vertical-align: top;
+}
+.prose th { background: var(--bg-sunk); font-weight: 700; }
+
+/* 供屏幕阅读器使用 */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--sp-4);
+  top: -100px;
+  z-index: 50;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  transition: top .15s ease;
+}
+.skip-link:focus { top: var(--sp-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
