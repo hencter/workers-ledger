@@ -54,9 +54,11 @@
 .searchbar__clear:hover { background: var(--bg-hover); color: var(--text); }
 .searchbar__clear[hidden] { display: none; }
 
+/* 筛选维度：去掉「按节」后共 8 组（主张强度、举证难度、效力位阶 + 成本五项）。
+   两列正好四行；三列会让每列偏窄，且 8 除不尽留一行残缺，所以只在很宽时才上三列。 */
 .facets { display: grid; gap: var(--sp-4); grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 760px) { .facets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4) var(--sp-6); } }
-@media (min-width: 1240px) { .facets { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1500px) { .facets { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 .facet { border: 0; margin: 0; padding: 0; min-width: 0; }
 .facet__legend {
@@ -151,8 +153,11 @@
 .results__count { font-size: var(--fs-300); color: var(--text-mid); }
 .results__count b { font-family: var(--font-mono); color: var(--text); font-size: var(--fs-500); }
 .results__hint { font-size: var(--fs-100); color: var(--text-dim); }
+/* 结果卡片。首页主区用满宽度后（见 layout.css 的 .main--home），这里的两列断点才真正生效。
+   阈值取 1120px（可见宽度）而不是 1400px：两列各约 545px，卡片读起来仍然舒服；
+   1400px 是在容器还被限在 46rem 时写的，等于永远走不到。 */
 .results__list { display: grid; gap: 0; grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 1400px) { .results__list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--sp-4); } }
+@media (min-width: 1120px) { .results__list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--sp-4); } }
 
 .results__more {
   display: block;

@@ -81,4 +81,4 @@ if (bad) fail(`产物形态校验不通过 ${bad} 项——public/ 很可能被�
 console.log(`\n生产构建完成：${PUBLIC}`)
 console.log(`  baseURL：${BASE}`)
 console.log('  产物形态 6 项全部通过')
-console.log('  下一步：node site/checks/render-check.mjs（106 项渲染断言）')
+console.log('  下一步：cd site && node checks/render-check.mjs（渲染断言）')

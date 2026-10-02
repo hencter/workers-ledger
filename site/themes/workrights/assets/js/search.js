@@ -45,16 +45,13 @@ const tag = (entry, key) => {
   return t[key] == null ? '' : String(t[key])
 }
 
-/** 筛选维度定义。get 返回该条目在这个维度上的全部取值（数组）。 */
+/** 筛选维度定义。get 返回该条目在这个维度上的全部取值（数组）。
+ *
+ * 刻意不含「按节筛选」：左侧目录已经承担了按节收窄的职能，再在检索面板里放一份
+ * 是同一件事的两个入口，既占地方又让人犹豫点哪个。要按节看就点左侧目录。
+ * 检索面板只保留「读条目时要权衡的那些维度」——能不能拿到手、证据好不好取、
+ * 依据多硬、花掉什么。 */
 export const FACETS = [
-  {
-    key: 'sec',
-    label: '节',
-    hint: '按章节收窄',
-    get: (e) => [String(e['节号'])],
-    labelOf: (e) => `${e['节号']}. ${e['节名']}`,
-    order: null,
-  },
   {
     key: 'claim',
     label: '主张强度',
@@ -178,12 +175,12 @@ function highlight(text, query) {
 }
 
 function optionLabel(facet, value, sample) {
-  if (facet.key === 'sec' && sample) return `${value}. ${sample['节名']}`
   if (COST_LABELS[facet.key] && COST_LABELS[facet.key][value]) return COST_LABELS[facet.key][value]
   return value
 }
 
 function sortOptions(facet, options) {
+  // 没有 order 的维度按数值升序（原来的「节」用它把 1、2、…、14 排对，现已移除该维度）
   if (!facet.order) return options.sort((a, b) => Number(a.value) - Number(b.value))
   const idx = (v) => {
     const i = facet.order.indexOf(v)

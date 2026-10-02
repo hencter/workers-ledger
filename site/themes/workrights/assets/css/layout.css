@@ -238,6 +238,16 @@
   .main { padding: var(--sp-7) 0 var(--sp-8); max-width: calc(var(--measure) + var(--sp-7)); }
 }
 
+/* 首页用满栅格给它的宽度。
+   正文页（条目页、节页）保持上面的阅读上限——一行 46rem 更易读，不该为了填满而拉长。
+   但首页是一堆卡片与筛选控件，不是连续正文：限制到 46rem 会白掉大半屏，
+   而且 search.css 里 1240px / 1400px 那两条宽屏断点因为容器只有 46rem 永远触发不了。
+   实测视口 1624px 下：侧栏 288 + 间距 44 + 两侧留白 ~130，栅格给主区约 1130px，
+   减去 46rem+44px 的 780px 上限，右侧白掉约 350px。 */
+@media (min-width: 1080px) {
+  .main--home { max-width: none; }
+}
+
 /* 页脚 */
 .footer {
   border-top: 1px solid var(--line);

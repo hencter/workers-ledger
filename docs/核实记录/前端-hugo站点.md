@@ -258,3 +258,67 @@ node site/checks/render-check.mjs --out site/.tmp-min
 grep -rnE '\{\{<[^/]|\{\{%[^/]' site/content/
 grep -rn 'HAHAHUGOSHORTCODE' site/content/
 ```
+
+---
+
+## 追加改动（用户反馈驱动）
+
+用户看首页截图后提了两点：① 检索与筛选面板里的「节」筛选与左侧目录重复；② 右侧大片空白。
+
+### 一、移除检索面板的「按节筛选」
+
+`assets/js/search.js` 的 `FACETS` 里删掉了 `key: 'sec'`。理由：按节收窄由左侧目录承担，
+检索面板再放一份是同一件事的两个入口，既占地方又让人犹豫点哪个。检索面板现在只保留
+「读条目时要权衡的那些维度」——主张强度、举证难度、效力位阶 + 成本五项，共 8 组。
+
+顺手清掉了 `optionLabel` 里 `facet.key === 'sec'` 的死分支（无该维度后走不到），
+`sortOptions` 保留「无 order 则按数值排序」的分支并注明它原来的用途。
+
+**回归断言**：`checks/render-check.mjs` 增加 `筛选维度不含「节」`，断言
+`search.FACETS.some((f) => f.key === 'sec') === false`。
+
+> 这里踩了一个坑值得记：最初还写了一条「主页静态 HTML 里没有 `data-facet=sec`」的断言。
+> 但 facets 是脚本运行时生成的，静态 HTML 里从来没有 `data-facet` 属性——那条断言
+> **永远不会失败**，只是虚假的安心。实测把 `sec` 加回去时只有前一条变红，后一条不动，
+> 于是删掉了它。**一条不会失败的断言比没有断言更糟**，它会让人以为这个点被守住了。
+
+### 二、首页主区用满宽度，消除右侧空白
+
+**根因**：`.main` 在 `min-width:1080px` 下写了 `max-width: calc(var(--measure) + var(--sp-7))`，
+即 `46rem + 44px ≈ 780px`；而 `.shell` 栅格给主区的是 `1fr`。实测视口 1624px 下：
+侧栏 288 + 间距 44 + 两侧留白约 130，可用约 1130px，减去 780px 上限，**右侧白掉约 350px**。
+
+连带后果：`search.css` 里 `min-width:1240px` 的 facets 三列、`min-width:1400px` 的
+结果卡片两列——这两条**永远触发不了**，因为容器只有 780px。写它们时预期有更宽空间。
+
+**改法（克制，不牺牲正文阅读宽度）**：
+
+1. `baseof.html` 给首页的 `<main>` 加修饰类：`class="main{{ if .IsHome }} main--home{{ end }}"`。
+2. `layout.css` 加 `@media (min-width:1080px) { .main--home { max-width: none; } }`。
+   **只有首页放宽**——条目页、节页的上限保留，一行 46rem 更易读，不该为了填满而拉长。
+3. `search.css` 结果卡片两列断点从 1400px 降到 **1120px**（两列各约 545px，读起来仍舒服）。
+4. `search.css` facets 断点：`1240px 三列` 改为 `1500px 四列`。去掉「节」后是 8 组维度，
+   两列正好四行；三列除不尽会留一行残缺，且每列偏窄。
+
+**验证**（从渲染产物读回，不是看源码）：
+
+| 检查 | 结果 |
+| --- | --- |
+| 首页 `<main>` 类名 | `main main--home` |
+| 条目页 `<main>` 类名 | `main`（未被波及） |
+| 产物 CSS 含 `.main--home{max-width:none}` | 是 |
+| 产物 CSS 的结果两列断点 | `@media(min-width:1120px)` |
+| 产物 CSS 仍含 1240px 的 facets 规则 | 否（已移除），改为 1500px 四列 |
+| 实际引用的 JS 含 `sec` 维度 | 否 |
+| 严格构建 | exit 0，319 页，零警告 |
+| 渲染校验 | 107 项断言，不通过 0 |
+
+### 三、过程记录：又撞上并发写者
+
+改文件期间 `site/public/` 里同时出现两份指纹资源（`main.09323844….js` 含 `sec`、
+`main.413fa86….js` 不含）。首页引用的是新的那份，旧的是上一个构建的残留——
+有个 `hugo server -D`（PID 32468）在被反复拉起，持续往 `public/` 写开发版。
+`tools/build-prod.mjs` 的护栏按设计拒绝了带 server 的构建；停掉后干净重建，
+`public/` 只剩一份指纹资源，产物形态 6 项全过。
+
+**建议**：本地预览改用 `hugo server -D --renderToMemory`，它不写 `public/`，可与验收构建共存。
