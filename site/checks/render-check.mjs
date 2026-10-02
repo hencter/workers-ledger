@@ -323,10 +323,26 @@ for (const file of walk(OUT)) {
   }
   if (file.endsWith('.html')) {
     const text = fs.readFileSync(file, 'utf8')
-    // canonical 本来就是绝对地址（站点自己的 baseURL），不算外来资源；只查会发起加载的标签
+    // 「离线可用」要查的是**会发起网络请求**的标签。
+    //
+    // 为什么不能简单地「script/link + 任意 http(s) href」：`<link rel=license>`
+    // 这类**纯元数据**链接不会让浏览器去取任何东西，它只是把「这份内容的使用条件」
+    // 随页面声明出去（GEO 与聚合器要用）。先前这么写，一加上许可声明就有 344 项假阳性。
+    //
+    // 判据改为两类：
+    //   ① script 的 src —— 会执行、会加载；
+    //   ② link 里属于「资源型」的 rel —— 会加载样式、字体、图标、清单、预取。
+    // 其余 rel（canonical／license／llms／alternate／author…）是元数据，跳过。
+    const RESOURCE_REL = /^(?:stylesheet|preload|prefetch|modulepreload|icon|shortcut icon|apple-touch-icon|manifest|mask-icon)$/i
     for (const tag of text.match(/<(?:script|link)\b[^>]*>/g) || []) {
-      if (/rel\s*=\s*(?:"|')?canonical/.test(tag)) continue
-      if (/(?:src|href)\s*=\s*(?:"|')?https?:\/\//.test(tag)) externalResourceTags.push(`${rel}: ${tag.trim().slice(0, 100)}`)
+      const rel = /\brel\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag)
+      const relVal = (rel ? (rel[1] ?? rel[2] ?? rel[3]) : '').trim().toLowerCase()
+      const isScript = /^<script/i.test(tag.trim())
+      // 无 rel 的 <script src> 会加载；link 必须落在资源型 rel 上才算
+      if (!isScript && !RESOURCE_REL.test(relVal)) continue
+      if (/(?:src|href)\s*=\s*(?:"|')?https?:\/\//.test(tag)) {
+        externalResourceTags.push(`${rel}: ${tag.trim().slice(0, 100)}`)
+      }
     }
     for (const tag of text.match(/<img\b[^>]*>/g) || []) {
       if (/(?:src|srcset)\s*=\s*(?:"|')?https?:\/\//.test(tag)) externalResourceTags.push(`${rel}: ${tag.trim().slice(0, 100)}`)

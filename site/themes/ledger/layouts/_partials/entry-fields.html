@@ -5,6 +5,32 @@
 {{- $claimRaw := $p.Params.主张强度 | default "" -}}
 {{- $claim := partialCached "logic/claim.html" (dict "v" $claimRaw) (printf "claim|%s" $claimRaw) -}}
 {{- $claimClass := partialCached "logic/badge-class.html" (dict "kind" "claim" "v" $claim) (printf "class|claim|%s" $claim) -}}
+{{- /* 徽章之外的余下文字：剥掉与徽章重复的分档前缀。
+       为什么必须有这一段：全仓 325 条里 323 条的「主张强度」就只写「可主张／可推定／倡导性」，
+       直接输出原文会变成「可主张 可主张」——徽章已经把话说完了。这与下面「举证难度」的
+       处理方式（$proofRest）保持同构。
+       注意剥前缀必须与 logic/claim.html 的归一规则同序（前缀判断），否则会出现
+       「徽章显示可推定、余下文字却从『可主张』开始」的错误搭接。 */ -}}
+{{- $claimRest := $claimRaw -}}
+{{- if $claim -}}
+  {{- /* 剥掉与徽章重复的分档前缀。先 TrimPrefix 再 TrimSpace：
+         注册表里的写法有「可推定——…」（破折号紧跟），也有「可主张（…）」（括号紧跟），
+         若先 TrimSpace 再 TrimPrefix，破折号后的空格会残留成「可推定 —受理时限…」。 */ -}}
+  {{- if strings.HasPrefix $claimRaw $claim -}}
+    {{- $claimRest = strings.TrimPrefix $claim $claimRaw | strings.TrimSpace -}}
+  {{- else -}}
+    {{- $claimRest = strings.Replace $claimRaw $claim "" 1 | strings.TrimSpace -}}
+  {{- end -}}
+{{- end -}}
+{{- /* 再剥掉连接用的破折号（长横、破折号、普通连字符都见过） */ -}}
+{{- $claimRest = strings.TrimLeft "—–-—-　 " $claimRest -}}
+{{- /* 括注式：只在前**(**且后**)**都成对时剥括号。
+       这样「（权利本身）」→「权利本身」，「（但要满足…前提）」也干净；
+       而只在开头有括号、来源文本不完整的情形不会被误截内容。 */ -}}
+{{- if and (hasPrefix $claimRest "（") (hasSuffix $claimRest "）") -}}
+  {{- $claimRest = strings.TrimSuffix "）" (strings.TrimPrefix "（" $claimRest) -}}
+{{- end -}}
+{{- $claimRest = strings.TrimSpace $claimRest -}}
 {{- $proofRaw := $p.Params.举证难度 | default "" -}}
 {{- $proof := partialCached "logic/proof.html" (dict "v" $proofRaw) (printf "proof|%s" $proofRaw) -}}
 {{- $proofClass := partialCached "logic/badge-class.html" (dict "kind" "proof" "v" $proof) (printf "class|proof|%s" $proof) -}}
@@ -41,8 +67,8 @@
     <dd>
       <p class="field__inline">
         <span class="badge badge--claim badge--{{ $claimClass }}"><span class="badge__v">{{ $claim | default "未标注" }}</span></span>
-        <span class="field__rest">{{ $claimRaw }}</span>
       </p>
+      {{- with $claimRest }}<p class="field__rest">{{ . }}</p>{{ end }}
     </dd>
   </div>
   <div class="field">

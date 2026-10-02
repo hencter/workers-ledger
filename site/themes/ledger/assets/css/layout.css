@@ -148,19 +148,60 @@
 /* 节与节之间留出间距，让「一级条目」有分组感；否则 14 行一样密，看不出层级。 */
 .nav-sec + .nav-sec { margin-top: 2px; }
 
-.nav-sec > a {
+/* 节行＝「节名链接 + 展开按钮」并排（见 sidebar.html 的说明：两件事必须两个元素，
+   链接负责跳转、按钮负责展开）。用 grid 而不是 flex，是为了让链接占满剩余宽度、
+   按钮固定宽度，长节名不会被按钮挤成竖排。 */
+.nav-sec__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  border-radius: var(--radius-s);
+}
+.nav-sec__row:hover { background: var(--bg-hover); }
+
+.nav-sec__link {
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
   min-height: 38px;
-  padding: 7px var(--sp-2);
+  padding: 7px var(--sp-1) 7px var(--sp-2);
   border-radius: var(--radius-s);
   color: var(--text-mid);
   text-decoration: none;
   font-size: 14px;
   line-height: var(--lh-snug);
 }
-.nav-sec > a:hover { background: var(--bg-hover); color: var(--text); }
+.nav-sec__link:hover { color: var(--text); }
+
+/* 展开/收起按钮：可见部分只有一个箭头，文字给读屏（visually-hidden）。
+   24×24 的点击区是触屏可用的下限，所以不做成 14px 的小三角。 */
+.nav-sec__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: var(--radius-s);
+  padding: 0;
+}
+.nav-sec__toggle:hover { color: var(--text); }
+.nav-sec__toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 箭头用 CSS 画：一条边框线旋转 45°，不引入图标字体或 SVG 请求。 */
+.nav-sec__chev {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform .15s ease;
+}
+.nav-sec__toggle[aria-expanded="true"] .nav-sec__chev { transform: rotate(45deg); }
+@media (prefers-reduced-motion: reduce) {
+  .nav-sec__chev { transition: none; }
+}
 
 /* 序号列从 1.7em 收到 1.5em：它只放一个到两位的数字，
    省下的横向宽度直接给节名，14 行的导航每一行都受益。 */
@@ -173,12 +214,11 @@
 }
 /* 当前节用「底色 + 左侧细条」表达，不用原来的 inset 阴影压在小字上。
    细条用 border-radius 收圆，贴着行左侧，视觉重量轻得多。 */
-.nav-sec.is-current > a {
-  color: var(--text);
-  font-weight: 700;
+.nav-sec.is-current .nav-sec__row {
   background: var(--bg-hover);
   box-shadow: inset 3px 0 0 var(--accent);
 }
+.nav-sec.is-current .nav-sec__link { color: var(--text); font-weight: 700; }
 .nav-sec.is-current .nav-sec__num { color: var(--accent-ink); }
 
 /* 展开在当前节下的条目列表。
@@ -289,13 +329,14 @@
 .crumbs a:hover { color: var(--accent-ink); text-decoration: underline; }
 .crumbs__sep { color: var(--line-strong); }
 
-/* 移动端：侧栏变抽屉（仅在有脚本时启用） */
+/* 移动端：侧栏变抽屉（仅在有脚本时启用）
+   显隐由 `hidden` 属性控制，不再用 CSS 类切 display——
+   `hidden` 是语义状态，读屏与爬虫据此认定内容不存在；纯 CSS 隐藏做不到这一点。
+   这段媒体查询只负责抽屉的**版式**（固定定位、铺满、可滚动）。 */
 @media (max-width: 1079px) {
   .js .nav-toggle { display: inline-flex; }
-  .js .sidebar { display: none; }
-  .js body.nav-open .sidebar { display: block; }
   .js body.nav-open { overflow: hidden; }
-  .js body.nav-open .sidebar {
+  .js .sidebar:not([hidden]) {
     position: fixed;
     inset: var(--topbar-h) 0 0 0;
     z-index: 20;

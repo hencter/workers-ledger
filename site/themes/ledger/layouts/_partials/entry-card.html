@@ -1,5 +1,10 @@
-{{- /* 条目卡片（服务端渲染版，用于节页与首页的无脚本回退）。
-       入参：dict "page" 条目页 "showSection" 是否显示节名 */ -}}
+{{- /* 条目卡片（服务端渲染版，用于节页的无脚本回退）。
+       入参：dict "page" 条目页 "showSection" 是否显示节名
+
+       标题用 <h2>：本卡片只被 section.html 使用，那里页面标题是 <h1>，
+       卡片就是正文里的一级子标题。此前写 <h3> 会造成 h1 → h3 跳级——
+       节页上一级都没有 h2，标题目录会出现断层，爬虫与屏幕阅读器的目录都会断。
+       （首页的检索结果另有自己的模板，那里的 <h3> 位于 <h2>「检索与筛选」之下，是对的，不要一并改。） */ -}}
 {{- $p := .page -}}
 {{- $claimRaw := $p.Params.主张强度 | default "" -}}
 {{- $claim := partialCached "logic/claim.html" (dict "v" $claimRaw) (printf "claim|%s" $claimRaw) -}}
@@ -20,7 +25,7 @@
     <span class="card__num">{{ $p.Params.节号 }}.{{ $p.Params.条号 }}</span>
     {{- if .showSection }}<span class="card__sec">{{ $p.Params.节名 }}</span>{{ end }}
   </p>
-  <h3 class="card__title"><a class="card__link" href="{{ $p.RelPermalink }}">{{ $p.Title }}</a></h3>
+  <h2 class="card__title"><a class="card__link" href="{{ $p.RelPermalink }}">{{ $p.Title }}</a></h2>
   <p class="card__lead">{{ $p.Params.说人话 }}</p>
   <ul class="badges">
     <li class="badge badge--claim badge--{{ $claimClass }}">

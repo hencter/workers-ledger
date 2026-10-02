@@ -1,5 +1,19 @@
 {{- /* 侧边目录：从 site.Home.Sections.ByWeight 动态取节，不写死节数与条目数。
-       当前节展开到条目，其余节只显示节名（避免导航过长）。 */ -}}
+       每个节都可就地展开/收起，方便跳转阅读；默认只展开「当前所在节」。
+
+       ## 为什么是「链接 + 按钮」两个元素，而不是一个可点击的标题
+
+       这是 W3C ARIA 的无障碍展开（disclosure）模式：
+         - 节名本身必须是 <a>：用户要能直接进入该节页面，这是主路径；
+         - 展开动作必须是 <button>：按钮才有「按下/展开」的语义，<a> 没有，
+           读屏不会把它播报成可展开控件，键盘也无法用空格键触发。
+       把两件事塞进同一个元素，必然牺牲其中一件。
+
+       ## 无脚本时的行为
+
+       收起用的不是 CSS 类，而是 HTML 的 `hidden` 属性——它是**语义**，读屏与爬虫都会
+       按「内容不存在」处理。脚本未启用时不加 hidden，全部条目平铺可见，
+       导航依然可用（渐进增强，不是「没脚本就废」）。*/ -}}
 {{- $page := . -}}
 {{- $current := .CurrentSection -}}
 {{- $sections := site.Home.Sections.ByWeight -}}
@@ -14,13 +28,23 @@
   <ul class="nav-list">
     {{- range $sections }}
       {{- $isCurrent := and $current (eq . $current) }}
+      {{- $id := printf "nav-sec-%v" .Weight }}
     <li class="nav-sec{{ if $isCurrent }} is-current{{ end }}">
-      <a href="{{ .RelPermalink }}">
-        <span class="nav-sec__num">{{ .Weight }}</span>
-        <span>{{ .LinkTitle }}</span>
-      </a>
-      {{- if $isCurrent }}
-      <ul class="nav-entries">
+      <div class="nav-sec__row">
+        <a class="nav-sec__link" href="{{ .RelPermalink }}"{{ if $isCurrent }} aria-current="true"{{ end }}>
+          <span class="nav-sec__num">{{ .Weight }}</span>
+          <span class="nav-sec__name">{{ .LinkTitle }}</span>
+        </a>
+        {{- /* 按钮紧邻链接，便于读屏把它与所属节关联起来（而不是被当成两个孤立控件）。 */ -}}
+        <button class="nav-sec__toggle" type="button"
+                data-nav-toggle-sec aria-expanded="{{ if $isCurrent }}true{{ else }}false{{ end }}"
+                aria-controls="{{ $id }}"
+                title="{{ if $isCurrent }}收起{{ else }}展开{{ end }}本节条目">
+          <span class="nav-sec__chev" aria-hidden="true"></span>
+          <span class="visually-hidden">{{ if $isCurrent }}收起{{ else }}展开{{ end }}{{ .LinkTitle }}的条目</span>
+        </button>
+      </div>
+      <ul class="nav-entries" id="{{ $id }}"{{ if not $isCurrent }} hidden{{ end }}>
         {{- range .Pages.ByWeight }}
         <li>
           <a href="{{ .RelPermalink }}"{{ if eq . $page }} aria-current="page"{{ end }}>
@@ -30,7 +54,6 @@
         </li>
         {{- end }}
       </ul>
-      {{- end }}
     </li>
     {{- end }}
   </ul>

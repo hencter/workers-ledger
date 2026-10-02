@@ -1,11 +1,22 @@
 <footer class="footer">
   <div class="footer__inner">
-    <p>{{ site.Params.disclaimer }}</p>
+    <p>{{ site.Params.disclaimer | markdownify }}</p>
+    {{- $cfg := partial "site-config.html" . }}
     <div class="footer__meta">
       <span>{{ site.Params.generatorNote }}</span>
       <span>本次构建：{{ now.Format "2006-01-02 15:04" }}</span>
       <a href="{{ site.Home.RelPermalink }}">全部条目</a>
       <a href="{{ site.Home.RelPermalink }}#search">检索与筛选</a>
+      {{- /* 授权链接放在页脚每一页都有的位置，而不是只放授权页里：
+             页脚是「使用条件」最该出现的地方，读者与机器都从这里判断能否转载、能否商用。
+             注意**不要**在这条链接上加 rel="license"——那是给「许可证本身」的链接用的；
+             本站指向的是授权说明页，许可证链接已在 head 里以 rel="license" 声明。 */ -}}
+      <a href="{{ "授权/" | relURL }}">授权与使用</a>
+      {{- /* 回仓库入口：正文真相源在仓库里（book/），读者要提 issue、看修订历史、
+             或按 CC 许可转载时都需要它。地址从 site.config.json 读，不在模板里写死。 */ -}}
+      {{- with $cfg.repoURL }}
+      <a href="{{ . }}" rel="noopener">GitHub 仓库</a>
+      {{- end }}
     </div>
   </div>
 </footer>

@@ -5,7 +5,11 @@
   </a>
   <span class="topbar__spacer"></span>
   <div class="topbar__actions">
-    <button class="tbtn nav-toggle" type="button" data-nav-toggle aria-expanded="false" aria-controls="sidebar">目录</button>
+    {{- /* 抽屉按钮：**刻意不写 aria-expanded**。
+           服务端渲染时 JS 还没跑，面板按设计是可见的（保证无脚本也能读全书目录）；
+           此时若先声明 aria-expanded="false"，就等于告诉读屏「已收起」而内容其实在文档里——
+           状态与实际不符。该属性由 nav.js 在初始化时按真实状态写入。 */ -}}
+    <button class="tbtn nav-toggle" type="button" data-nav-toggle aria-controls="sidebar">目录</button>
     <a class="tbtn tbtn--primary" href="{{ site.Home.RelPermalink }}#search">检索</a>
     <button class="tbtn" type="button" data-theme-toggle aria-pressed="false" aria-label="切换深浅色">
       <span aria-hidden="true">◐</span><span data-theme-label>深色</span>

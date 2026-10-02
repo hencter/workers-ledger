@@ -25,6 +25,13 @@
 {{- with .Permalink }}
 <link rel="canonical" href="{{ . }}">
 {{- end }}
+
+{{- /* GEO：把机器可读的站点说明与许可声明挂在 head 里。
+       检索式 AI 与聚合器抓单页时不一定去读根目录，所以在每个页面都指一次；
+       rel="license" 让「这份内容的使用条件」随页面一起被搬走，不会只剩正文。 */}}
+<link rel="llms" type="text/plain" href="{{ "llms.txt" | relURL }}" title="给大模型与检索系统的站点说明">
+<link rel="license" href="{{ site.Params.licenseURL | default "https://creativecommons.org/licenses/by-nc-sa/4.0/" }}">
+<link rel="alternate" type="application/json" href="{{ "entries.json" | relURL }}" title="条目索引（机器可读）">
     {{- /* 图标三件套，顺序有讲究：
            SVG 在前，现代浏览器优先取它（矢量、可缩放）；
            ICO 在后兜住 Safari（不支持 SVG favicon）与各类抓取器、RSS 阅读器；

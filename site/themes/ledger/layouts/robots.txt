@@ -1,0 +1,81 @@
+# robots.txt —— 由 tools/build-site.mjs 的说明决定，但本文件是静态真相源。
+#
+# ## 为什么 AI 爬虫策略要写在这里（GEO）
+#
+# 本站希望被检索式 AI 引用——它写出来就是为了让人在遇到具体劳动权益问题时
+# 找到可核对的条目。但**「被引用」与「被商用」是两件事**：
+# 本仓库内容采用 CC BY-NC-SA 4.0（见 /授权/ 与仓库根 LICENSE），不得用于商业目的。
+#
+# 因此这里采取「**允许索引与引用、明确拒绝商业用途**」的立场，
+# 而不是一刀切屏蔽 AI 爬虫：屏蔽会让读者在 AI 里问「加班费怎么举证」时
+# 永远拿不到本书的答案，而本书的价值恰恰在于「说清举证与时效」。
+#
+# **注意我们的技术边界，别把 robots.txt 当合同**：
+#   - robots.txt 靠爬虫自愿遵守，不具强制力，也无法区分「引用」与「商用」；
+#   - 它表达的是**意图**；真正的约束力来自内容许可证（CC BY-NC-SA 4.0）
+#     与仓库根 LICENSE 里的商用需另行授权条款。
+# 这一点不回避：写了就是让人看见立场，不是假装技术能拦住商用。
+
+User-agent: *
+Allow: /
+# 检索索引（前端筛选用，机器也可直接消费）
+Allow: /entries.json
+Allow: /llms.txt
+# 只挡 RSS 订阅源（站内没有订阅入口，留着只增加重复内容）。
+# 注意：**不要写 Disallow: /*.xml$** ——那会把 sitemap.xml 自己挡掉，
+# 与「Sitemap: 行声明站点地图」直接矛盾（本文件第一版就是这么写的）。
+Disallow: /index.xml
+
+# 明确的 AI / 大模型爬虫：允许抓取。
+# 目的是被引用，并且在其输出中保留出处；不得用于商业训练或商业分发（见 /授权/）。
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Diffbot
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+# 采集工具（非检索）：这些不产出引用，只搬运内容，商业风险更高，故拒绝。
+# 若你运营的是公益性质的存档项目，请开 issue 说明，我们可以个案放行。
+User-agent: ImagesiftBot
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: Scrapy
+Disallow: /
+
+Sitemap: __SITEMAP__

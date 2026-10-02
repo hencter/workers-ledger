@@ -3,30 +3,63 @@
        还必须接 safeJS：Hugo 在 <script> 上下文里按 JS 字符串做转义，
        只写 jsonify 会被多包一层引号（实测产物形如 "{\"@type\":...}"），
        消费方拿到的是字符串而不是对象，这块数据等于无效。
-       内页用 Article，挂在 Book 之下；首页用 WebSite。 */ -}}
+       内页用 Article，挂在 Book 之下；首页用 WebSite。
+
+       ## 为什么把授权信息也放进结构化数据（GEO）
+
+       检索式 AI 与聚合器读的是结构化数据，不是页脚文字。本书内容采用
+       CC BY-NC-SA 4.0（不得商用），若只写在页脚，机器读不到「这份材料的
+       使用条件是什么」，引用时就可能把「非商业」这一层丢掉。
+       所以用 schema.org 的 license / copyrightNotice 明确表达，
+       让「可引用、须署名、不得商用」跟着数据一起被搬走。 */ -}}
 {{- $desc := .Description | default "" -}}
 {{- if not $desc }}{{ $desc = site.Params.tagline | default site.Title }}{{ end -}}
+{{- $lang := partial "locale.html" . -}}
+{{- $licenseURL := site.Params.licenseURL | default "https://creativecommons.org/licenses/by-nc-sa/4.0/" -}}
+{{- $licenseName := site.Params.licenseName | default "CC BY-NC-SA 4.0（署名—非商业性使用—相同方式共享 4.0 国际）" -}}
+{{- $copyrightNotice := printf "%s 采用 %s。禁止商业使用；商用需另行授权。" site.Title $licenseName -}}
+{{- $publisher := dict "@type" "Organization" "name" site.Title "url" site.Home.Permalink -}}
 {{- $ld := dict
   "@context" "https://schema.org"
   "@type" "WebSite"
   "name" site.Title
   "description" $desc
-  "inLanguage" (partial "locale.html" .)
+  "inLanguage" $lang
   "url" site.Home.Permalink
+  "publisher" $publisher
+  "license" $licenseURL
+  "copyrightNotice" $copyrightNotice
 -}}
 {{- if .IsPage -}}
   {{- $published := "" -}}
   {{- with .Date }}{{ if not .IsZero }}{{ $published = .Format "2006-01-02" }}{{ end }}{{ end -}}
+  {{- $modified := "" -}}
+  {{- with .Lastmod }}{{ if not .IsZero }}{{ $modified = .Format "2006-01-02" }}{{ end }}{{ end -}}
+  {{- /* 关键词取条目自己的结构字段：效力位阶／主张强度／举证难度是本书的特点，
+         把它们作为 keywords 暴露，检索式 AI 才可能按「举证难」这类维度找到条目。 */ -}}
+  {{- $kw := slice }}
+  {{- with .Params.节名 }}{{ $kw = $kw | append . }}{{ end }}
+  {{- with .Params.效力位阶 }}{{ $kw = $kw | append . }}{{ end }}
+  {{- with .Params.主张强度 }}{{ $kw = $kw | append . }}{{ end }}
+  {{- with .Params.举证难度 }}{{ $kw = $kw | append (printf "举证难度：%s" .) }}{{ end }}
+  {{- with .Params.地域 }}{{ $kw = $kw | append . }}{{ end }}
   {{- $ld = dict
     "@context" "https://schema.org"
     "@type" "Article"
     "headline" .Title
     "description" $desc
-    "inLanguage" (partial "locale.html" .)
+    "inLanguage" $lang
     "url" .Permalink
     "datePublished" $published
+    "dateModified" $modified
+    "keywords" $kw
+    "articleSection" .Params.节名
+    "license" $licenseURL
+    "copyrightNotice" $copyrightNotice
+    "author" $publisher
+    "publisher" $publisher
     "mainEntityOfPage" (dict "@type" "WebPage" "@id" .Permalink)
-    "isPartOf" (dict "@type" "Book" "name" site.Title "url" site.Home.Permalink)
+    "isPartOf" (dict "@type" "Book" "name" site.Title "url" site.Home.Permalink "license" $licenseURL)
   -}}
 {{- else if .IsSection -}}
   {{- $ld = dict
@@ -34,9 +67,25 @@
     "@type" "CollectionPage"
     "name" .Title
     "description" $desc
-    "inLanguage" (partial "locale.html" .)
+    "inLanguage" $lang
     "url" .Permalink
-    "isPartOf" (dict "@type" "Book" "name" site.Title "url" site.Home.Permalink)
+    "license" $licenseURL
+    "copyrightNotice" $copyrightNotice
+    "publisher" $publisher
+    "isPartOf" (dict "@type" "Book" "name" site.Title "url" site.Home.Permalink "license" $licenseURL)
   -}}
+{{- else if .IsHome -}}
+  {{- /* 首页额外声明整本书。条目数现算，不写死——写死数量是本站明令禁止的做法。 */ -}}
+  {{- $entries := hugo.Data.entries -}}
+  {{- $book := dict
+    "@type" "Book"
+    "name" site.Title
+    "url" site.Home.Permalink
+    "inLanguage" $lang
+    "numberOfPages" (len $entries)
+    "license" $licenseURL
+    "copyrightNotice" $copyrightNotice
+  -}}
+  {{- $ld = merge $ld (dict "about" $book) -}}
 {{- end -}}
 <script type="application/ld+json">{{ $ld | jsonify | safeJS }}</script>

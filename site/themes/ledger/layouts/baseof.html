@@ -14,10 +14,14 @@
   <a class="skip-link" href="#main">跳到正文</a>
   {{ partial "header.html" . }}
   <div class="shell">
-    <aside class="sidebar" id="sidebar" aria-label="全书目录">
+    {{- /* 侧栏与主区都带 data-drawer-*：移动端抽屉脚本据此切换 hidden / inert。
+         hidden 是**语义**（读屏与爬虫认定内容不存在），inert 让关闭状态下的
+         整块内容移出无障碍树与焦点顺序——两者分工不同、都要有，详见 nav.js。 */ -}}
+    <aside class="sidebar" id="sidebar" aria-label="全书目录"
+           data-drawer-panel data-drawer-expanded-control="[data-nav-toggle]" data-drawer-focus-target>
       {{ partial "sidebar.html" . }}
     </aside>
-    <main class="main" id="main">
+    <main class="main" id="main" data-drawer-inert>
       {{ block "main" . }}{{ end }}
     </main>
   </div>

@@ -44,6 +44,31 @@ jobs:
       - name: 运行条目结构校验
         run: node tools/check-items.mjs --check --summary "$GITHUB_STEP_SUMMARY"
 
+  # 新增：来源引用完整性（纯本地对账，与「来源时效」分工见下方注释）
+  refs:
+    name: 来源引用完整性（登记 ↔ 依据 ↔ 来源）
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 取出仓库内容
+        uses: actions/checkout@v4
+      - name: 准备 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # 纯本地对账，不联网。与「来源时效」job 的分工：
+      #   这里判「正文引用的法规有没有登记、正文写的版本有没有落后于登记版本」；
+      #   那个 job 抓官方页面判「登记的那 33 条自己有没有失效或更新」。
+      # 两者不重叠：住房公积金条例与 N01 那两次换版事故都是这一道抓出来的，
+      # 而旧的 check-items 交叉核查只在「来源栏没有 URL」时才触发，从未生效。
+      #
+      # 作业标识（job id）必须是 ASCII：中文标识会让整个工作流无法解析，
+      # 这正是远端刚修好的那个坑（提交「修复工作流无法解析：作业标识改用 ASCII」）。
+      # 所以这里用 refs，而不是「来源引用」。
+      - name: 运行来源引用完整性核查
+        run: node tools/check-refs.mjs --check --summary "$GITHUB_STEP_SUMMARY"
+
   sources:
     name: 来源时效与链接监控
     runs-on: ubuntu-latest
