@@ -189,6 +189,23 @@ checkTrue('首页脚本来自本站指纹文件', /js\/main\.[0-9a-f]+\.js/.test
 const robotsTag = /<meta[^>]*name=(?:"robots"|robots)[^>]*>/.exec(homeHtml)?.[0] || ''
 checkTrue('production 环境输出 index, follow', robotsTag.includes('index, follow'))
 
+// —— 首页版面：主区用满宽度、且只作用于首页 ——
+// 背景：.main 原来对所有页面都写死 max-width ≈ 780px，而栅格给主区的是 1fr，
+// 宽屏下右侧白掉约 350px，并让 search.css 里 1240px / 1400px 两条断点永远触发不了。
+// 现在首页用 .main--home 放宽，条目页与节页保留阅读上限。下面三条把这个区分钉住。
+const cssHref = /href=(?:"([^"]*\/css\/[^"]+\.css)"|([^ >]*\/css\/[^ >]+\.css))/.exec(cssTag)
+const cssRel = cssHref ? (cssHref[1] || cssHref[2]) : ''
+const cssBody = cssRel
+  ? fs.readFileSync(path.join(OUT, decodeURIComponent(stripBase(cssRel)).replace(/^\//, '')), 'utf8')
+  : ''
+checkTrue('首页 main 带 main--home 修饰类', /<main[^>]*class=(?:"main main--home"|main main--home)/.test(homeHtml))
+checkTrue('产物 CSS 含 .main--home{max-width:none}', /\.main--home\{max-width:none\}/.test(cssBody))
+checkTrue(
+  '产物 CSS 的结果两列断点不高于 1120px（否则宽屏仍是单列）',
+  /@media\(min-width:(\d+)px\)\{\.results__list\{grid-template-columns:repeat\(2/.test(cssBody) &&
+    Number(/@media\(min-width:(\d+)px\)\{\.results__list\{grid-template-columns:repeat\(2/.exec(cssBody)[1]) <= 1120,
+)
+
 const outDirsSorted = outDirs.slice().sort()
 const sectionHtml = fs.readFileSync(path.join(OUT, outDirsSorted[1], 'index.html'), 'utf8')
 for (const hook of ['data-local-filter', 'data-local-count', 'data-local-empty', 'data-entry-card', 'data-search=']) {
