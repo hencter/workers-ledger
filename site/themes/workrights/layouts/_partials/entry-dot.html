@@ -1,0 +1,4 @@
+{{- /* 条目小圆点：颜色即主张强度。入参 dict "v" 主张强度原文 */ -}}
+{{- $claim := partial "logic/claim.html" (dict "v" (.v | default "")) -}}
+{{- $class := partial "logic/badge-class.html" (dict "kind" "claim" "v" $claim) -}}
+<span class="dot dot--{{ $class }}" aria-hidden="true"></span>

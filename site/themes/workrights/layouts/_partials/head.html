@@ -1,5 +1,45 @@
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width">
-<title>{{ if .IsHome }}{{ site.Title }}{{ else }}{{ printf "%s | %s" .Title site.Title }}{{ end }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+
+{{- $title := "" -}}
+{{- if .IsHome -}}
+  {{- $title = printf "%s｜%s" site.Title (site.Params.tagline | default "") -}}
+{{- else -}}
+  {{- $title = printf "%s｜%s" .Title site.Title -}}
+{{- end -}}
+<title>{{ $title }}</title>
+
+{{- $desc := .Description | default "" -}}
+{{- if not $desc }}{{ $desc = site.Params.tagline | default site.Title }}{{ end -}}
+<meta name="description" content="{{ $desc }}">
+<meta name="author" content="{{ site.Title }}">
+
+{{- /* 非 production 一律 noindex，避免预览站被收录 */ -}}
+{{- if hugo.IsProduction }}
+<meta name="robots" content="index, follow">
+{{- else }}
+<meta name="robots" content="noindex, nofollow">
+{{- end }}
+
+{{- with .Permalink }}
+<link rel="canonical" href="{{ . }}">
+{{- end }}
+<link rel="icon" type="image/svg+xml" href="{{ "favicon.svg" | relURL }}">
+
+{{ partial "head/og.html" . }}
+{{ partial "head/jsonld.html" . }}
+
+{{- /* 在样式之前先定好主题，避免深色模式闪一下白 */ -}}
+<script>
+  (function () {
+    try {
+      var saved = localStorage.getItem('workrights-theme');
+      if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+    } catch (e) {}
+    document.documentElement.classList.add('js');
+  })();
+</script>
+
 {{ partialCached "head/css.html" . }}
 {{ partialCached "head/js.html" . }}

@@ -1,0 +1,19 @@
+{{- /* 主张强度 → 归一分档：可主张 / 可推定 / 倡导性 / ""（未标注）
+       入参：dict "v" 原始文本
+       正文里这一栏常带括注（如「可主张（以行政责令程序为前提）」），所以先按前缀判，再退回包含判。 */ -}}
+{{- $v := .v | default "" -}}
+{{- $out := "" -}}
+{{- if strings.HasPrefix $v "可主张" -}}
+  {{- $out = "可主张" -}}
+{{- else if strings.HasPrefix $v "可推定" -}}
+  {{- $out = "可推定" -}}
+{{- else if strings.HasPrefix $v "倡导性" -}}
+  {{- $out = "倡导性" -}}
+{{- else if strings.Contains $v "可主张" -}}
+  {{- $out = "可主张" -}}
+{{- else if strings.Contains $v "可推定" -}}
+  {{- $out = "可推定" -}}
+{{- else if strings.Contains $v "倡导性" -}}
+  {{- $out = "倡导性" -}}
+{{- end -}}
+{{- return $out -}}

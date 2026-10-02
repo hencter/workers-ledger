@@ -1,0 +1,8 @@
+{{- /* 效力位阶 → 主位阶（字符串，可能为空）
+       入参：dict "v" 原始文本 */ -}}
+{{- $ranks := partial "logic/ranks.html" (dict "v" (.v | default "")) -}}
+{{- $out := "" -}}
+{{- if gt (len $ranks) 0 -}}
+  {{- $out = index $ranks 0 -}}
+{{- end -}}
+{{- return $out -}}

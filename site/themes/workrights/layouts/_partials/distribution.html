@@ -1,0 +1,85 @@
+{{- /* 证据分布：首页一眼可见「主张强度」与「举证难度」的构成。
+       数据来自 site/data/entries.json（由 tools/build-site.mjs 生成），
+       分档规则与条目页徽章共用 layouts/_partials/logic/ 下的同一套逻辑。
+       注意用 hugo.Data 而不是 site.Data：后者在 0.156 起已弃用并会告警。 */ -}}
+{{- $entries := hugo.Data.entries -}}
+{{- if $entries -}}
+{{- $total := len $entries -}}
+{{- $latest := "" -}}
+{{- range $entries -}}
+  {{- $d := index . "核对日期" | default "" -}}
+  {{- if gt $d $latest }}{{ $latest = $d }}{{ end -}}
+{{- end -}}
+<section class="dist" aria-labelledby="dist-title">
+  <div class="dist__head">
+    <h2 class="dist__title" id="dist-title">全书证据分布</h2>
+    <p class="dist__note">颜色与格数在全书一致：主张强度看颜色，举证难度看格数</p>
+  </div>
+  <div class="dist__grid">
+    <div class="dist__col">
+      <h3>主张强度 · 能不能真拿到手</h3>
+      {{- range $bucket := slice "可主张" "可推定" "倡导性" -}}
+        {{- $n := 0 -}}
+        {{- range $entries -}}
+          {{- if eq (partial "logic/claim.html" (dict "v" (index . "主张强度"))) $bucket -}}
+            {{- $n = add $n 1 -}}
+          {{- end -}}
+        {{- end -}}
+        {{- $class := partial "logic/badge-class.html" (dict "kind" "claim" "v" $bucket) -}}
+        {{- $pct := 0 -}}
+        {{- if gt $total 0 }}{{ $pct = div (mul $n 100) $total }}{{ end -}}
+      <p class="gauge gauge--{{ $class }}">
+        <span class="gauge__label">{{ $bucket }}</span>
+        <span class="gauge__bar"><span class="gauge__fill" style="width: {{ $pct }}%"></span></span>
+        <span class="gauge__val">{{ $n }}</span>
+      </p>
+      {{- end -}}
+      <p class="dist__hint">可主张＝有明确条文且有强制通道；可推定＝有条文但存在裁量或地方口径差异；倡导性＝只有政策文件，没有可强制执行的请求权。</p>
+    </div>
+    <div class="dist__col">
+      <h3>举证难度 · 证据好不好取</h3>
+      {{- range $bucket := slice "易" "中" "难" -}}
+        {{- $n := 0 -}}
+        {{- range $entries -}}
+          {{- if eq (partial "logic/proof.html" (dict "v" (index . "举证难度"))) $bucket -}}
+            {{- $n = add $n 1 -}}
+          {{- end -}}
+        {{- end -}}
+        {{- $class := partial "logic/badge-class.html" (dict "kind" "proof" "v" $bucket) -}}
+        {{- $pct := 0 -}}
+        {{- if gt $total 0 }}{{ $pct = div (mul $n 100) $total }}{{ end -}}
+      <p class="gauge gauge--{{ $class }}">
+        <span class="gauge__label">{{ $bucket }}</span>
+        <span class="gauge__bar"><span class="gauge__fill" style="width: {{ $pct }}%"></span></span>
+        <span class="gauge__val">{{ $n }}</span>
+      </p>
+      {{- end -}}
+      <p class="dist__hint">易＝官方系统里查得到；中＝自己及时取证就能拿到；难＝关键事实靠对方配合或事后无法补取，取证要在离职前做完。</p>
+    </div>
+    <div class="dist__col">
+      <h3>效力位阶 · 依据的层级</h3>
+      {{- range $bucket := slice "法律" "行政法规" "部门规章" "司法解释" "地方性法规" "规范性文件" "地方口径" "无明文依据" -}}
+        {{- $n := 0 -}}
+        {{- range $entries -}}
+          {{- if in (partial "logic/ranks.html" (dict "v" (index . "效力位阶"))) $bucket -}}
+            {{- $n = add $n 1 -}}
+          {{- end -}}
+        {{- end -}}
+        {{- $pct := 0 -}}
+        {{- if gt $total 0 }}{{ $pct = div (mul $n 100) $total }}{{ end -}}
+      <p class="gauge gauge--claim-weak">
+        <span class="gauge__label">{{ $bucket }}</span>
+        <span class="gauge__bar"><span class="gauge__fill" style="width: {{ $pct }}%"></span></span>
+        <span class="gauge__val">{{ $n }}</span>
+      </p>
+      {{- end -}}
+      <p class="dist__hint">一条依据可能同时命中多个层级（例如「法律 + 司法解释」），所以这里按命中计，合计会大于条目总数。</p>
+    </div>
+  </div>
+  <div class="stats">
+    <div><div class="stat__n">{{ $total }}</div><div class="stat__k">条目</div></div>
+    <div><div class="stat__n">{{ len site.Home.Sections }}</div><div class="stat__k">节</div></div>
+    <div><div class="stat__n">{{ $latest }}</div><div class="stat__k">最近核对日期</div></div>
+  </div>
+</section>
+{{- end -}}

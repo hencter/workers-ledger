@@ -91,6 +91,10 @@
 
 .nav-toggle { display: none; }
 
+/* 深浅色切换按钮：没有脚本时点了也没用，所以只在启用脚本后出现 */
+.tbtn[data-theme-toggle] { display: none; }
+.js .tbtn[data-theme-toggle] { display: inline-flex; }
+
 /* 双栏骨架：移动端单列，宽屏才出侧栏 */
 .shell {
   display: grid;

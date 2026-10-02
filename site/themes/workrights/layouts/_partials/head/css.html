@@ -1,15 +1,18 @@
-{{- with resources.Get "css/main.css" }}
-  {{- $opts := dict
-    "minify" (cond hugo.IsDevelopment false true)
-    "sourceMap" (cond hugo.IsDevelopment "linked" "none")
-  }}
-  {{- with . | css.Build $opts }}
-    {{- if hugo.IsDevelopment }}
-      <link rel="stylesheet" href="{{ .RelPermalink }}">
-    {{- else }}
-      {{- with . | fingerprint }}
-        <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous">
-      {{- end }}
-    {{- end }}
-  {{- end }}
-{{- end }}
+{{- /* 样式：只有本地资源，经 css.Build 打包成一个文件（无 CDN、无外部字体）。 */ -}}
+{{- $css := resources.Get "css/main.css" -}}
+{{- if not $css -}}
+  {{- errorf "缺少样式入口 assets/css/main.css" -}}
+{{- end -}}
+{{- $opts := dict
+  "minify" (cond hugo.IsDevelopment false true)
+  "sourceMap" (cond hugo.IsDevelopment "linked" "none")
+-}}
+{{- with $css | css.Build $opts -}}
+  {{- if hugo.IsDevelopment -}}
+    <link rel="stylesheet" href="{{ .RelPermalink }}">
+  {{- else -}}
+    {{- with . | fingerprint -}}
+      <link rel="stylesheet" href="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous">
+    {{- end -}}
+  {{- end -}}
+{{- end -}}

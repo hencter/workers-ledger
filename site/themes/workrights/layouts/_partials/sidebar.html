@@ -1,0 +1,35 @@
+{{- /* 侧边目录：从 site.Home.Sections.ByWeight 动态取节，不写死节数与条目数。
+       当前节展开到条目，其余节只显示节名（避免导航过长）。 */ -}}
+{{- $page := . -}}
+{{- $current := .CurrentSection -}}
+{{- $sections := site.Home.Sections.ByWeight -}}
+<div class="nav-head"><span>全书目录</span><span>{{ len $sections }} 节</span></div>
+<nav aria-label="章节导航">
+  <ul class="nav-list">
+    {{- range $sections }}
+      {{- $isCurrent := and $current (eq . $current) }}
+    <li class="nav-sec{{ if $isCurrent }} is-current{{ end }}">
+      <a href="{{ .RelPermalink }}">
+        <span class="nav-sec__num">{{ .Weight }}</span>
+        <span>{{ .LinkTitle }}</span>
+      </a>
+      {{- if $isCurrent }}
+      <ul class="nav-entries">
+        {{- range .Pages.ByWeight }}
+        <li>
+          <a href="{{ .RelPermalink }}"{{ if eq . $page }} aria-current="page"{{ end }}>
+            {{- partialCached "entry-dot.html" (dict "v" .Params.主张强度) (printf "%v" .Params.主张强度) }}
+            <span>{{ .LinkTitle }}</span>
+          </a>
+        </li>
+        {{- end }}
+      </ul>
+      {{- end }}
+    </li>
+    {{- end }}
+  </ul>
+</nav>
+<div class="sidebar__foot">
+  <p>共 {{ len site.RegularPages }} 条，分 {{ len $sections }} 节。<br>条目按其主张强度在左侧标点：绿=可主张，琥珀=可推定，灰=倡导性。</p>
+  <p><a href="{{ site.Home.RelPermalink }}#search">检索与筛选 →</a></p>
+</div>

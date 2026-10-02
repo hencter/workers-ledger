@@ -1,15 +1,20 @@
-{{- with resources.Get "js/main.js" }}
-  {{- $opts := dict
-    "minify" (cond hugo.IsDevelopment false true)
-    "sourceMap" (cond hugo.IsDevelopment "linked" "none")
-  }}
-  {{- with . | js.Build $opts }}
-    {{- if hugo.IsDevelopment }}
-      <script src="{{ .RelPermalink }}"></script>
-    {{- else }}
-      {{- with . | fingerprint }}
-        <script src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous"></script>
-      {{- end }}
-    {{- end }}
-  {{- end }}
-{{- end }}
+{{- /* 脚本：本地 ES 模块经 js.Build 打包，输出 iife，普通 script 标签即可。 */ -}}
+{{- $js := resources.Get "js/main.js" -}}
+{{- if not $js -}}
+  {{- errorf "缺少脚本入口 assets/js/main.js" -}}
+{{- end -}}
+{{- $opts := dict
+  "format" "iife"
+  "target" "es2020"
+  "minify" (cond hugo.IsDevelopment false true)
+  "sourceMap" (cond hugo.IsDevelopment "linked" "none")
+-}}
+{{- with $js | js.Build $opts -}}
+  {{- if hugo.IsDevelopment -}}
+    <script src="{{ .RelPermalink }}"></script>
+  {{- else -}}
+    {{- with . | fingerprint -}}
+      <script src="{{ .RelPermalink }}" integrity="{{ .Data.Integrity }}" crossorigin="anonymous"></script>
+    {{- end -}}
+  {{- end -}}
+{{- end -}}

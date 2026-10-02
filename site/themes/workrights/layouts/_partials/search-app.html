@@ -1,0 +1,69 @@
+{{- /* 首页检索与筛选面板。
+       索引地址取首页 JSON 输出格式的真实地址（带 baseURL 子路径），
+       因此 GitHub Pages 上的子路径部署也能用。 */ -}}
+{{- $index := "" -}}
+{{- with .OutputFormats.Get "JSON" -}}{{- $index = .RelPermalink -}}{{- end -}}
+{{- if not $index -}}{{- $index = "entries.json" | relURL -}}{{- end -}}
+<section class="app" id="search" data-search-app data-index-url="{{ $index }}" data-page-size="40" aria-labelledby="search-title">
+  <header class="app__head">
+    <div class="app__title">
+      <h2 id="search-title">检索与筛选</h2>
+      <p>关键词之间是「且」，同一维度多选是「或」；条件写在网址里，可以直接把链接发给别人</p>
+    </div>
+    <div class="searchbar">
+      <div class="searchbar__field">
+        <span class="searchbar__icon" aria-hidden="true">⌕</span>
+        <label class="visually-hidden" for="q">关键词</label>
+        <input id="q" type="search" data-query autocomplete="off" placeholder="搜「加班费」「竞业限制」「举证」…（按 / 聚焦）">
+      </div>
+      <button class="searchbar__clear" type="button" data-clear hidden>清空</button>
+    </div>
+  </header>
+
+  <div class="facets" data-facets></div>
+  <div class="applied" data-applied></div>
+
+  <div class="results__bar">
+    <p class="results__count" data-count aria-live="polite">正在载入检索索引…</p>
+    <p class="results__hint">主张强度＝能不能拿到手；举证难度＝证据好不好取</p>
+  </div>
+
+  <div class="results__list" data-results>
+    <p class="empty">检索与筛选需要浏览器启用脚本。若脚本被停用，请从左侧（移动端为上方「目录」）逐节浏览全部条目。</p>
+  </div>
+  <button class="results__more" type="button" data-more hidden>显示更多</button>
+
+  <template id="entry-card-tpl">
+    <article class="card" data-entry-card>
+      <span class="card__rail" aria-hidden="true"></span>
+      <p class="card__eyebrow">
+        <span class="card__num"></span>
+        <span class="card__sec"></span>
+      </p>
+      <h3 class="card__title"><a class="card__link" href="#"></a></h3>
+      <p class="card__lead"></p>
+      <ul class="badges">
+        <li class="badge badge--claim">
+          <span class="badge__k">主张强度</span><span class="badge__v"></span>
+        </li>
+        <li class="badge badge--proof">
+          <span class="meter" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="badge__k">举证难度</span><span class="badge__v"></span>
+        </li>
+        <li class="badge badge--rank">
+          <span class="badge__k">效力位阶</span><span class="badge__v"></span>
+        </li>
+        <li>
+          <time class="badge badge--date" data-checked="">
+            <span class="badge__k">核对</span><span class="badge__v"></span>
+            <span class="badge__flag" data-stale-flag hidden>待复核</span>
+          </time>
+        </li>
+      </ul>
+      <div class="card__foot">
+        <span class="card__basis"></span>
+        <ul class="chips card__chips"></ul>
+      </div>
+    </article>
+  </template>
+</section>

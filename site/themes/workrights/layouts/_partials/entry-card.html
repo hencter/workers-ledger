@@ -1,0 +1,52 @@
+{{- /* 条目卡片（服务端渲染版，用于节页与首页的无脚本回退）。
+       入参：dict "page" 条目页 "showSection" 是否显示节名 */ -}}
+{{- $p := .page -}}
+{{- $claimRaw := $p.Params.主张强度 | default "" -}}
+{{- $claim := partial "logic/claim.html" (dict "v" $claimRaw) -}}
+{{- $claimClass := partial "logic/badge-class.html" (dict "kind" "claim" "v" $claim) -}}
+{{- $proofRaw := $p.Params.举证难度 | default "" -}}
+{{- $proof := partial "logic/proof.html" (dict "v" $proofRaw) -}}
+{{- $proofClass := partial "logic/badge-class.html" (dict "kind" "proof" "v" $proof) -}}
+{{- $level := 0 -}}
+{{- if eq $proof "易" }}{{ $level = 1 }}{{ else if eq $proof "中" }}{{ $level = 2 }}{{ else if eq $proof "难" }}{{ $level = 3 }}{{ end -}}
+{{- $rank := partial "logic/rank.html" (dict "v" ($p.Params.效力位阶 | default "")) -}}
+{{- $date := $p.Params.核对日期 | default "" -}}
+{{- $cost := $p.Params.成本标签 | default dict -}}
+{{- $haystack := printf "%s %s %s %s %s %s" $p.Title $p.Params.说人话 $p.Params.依据 $p.Params.备注 $p.Params.适用 $p.Params.节名 | lower -}}
+<article class="card{{ if eq $claim "可主张" }} card--claim-strong{{ else if eq $claim "可推定" }} card--claim-mid{{ else }} card--claim-weak{{ end }}"
+         data-entry-card data-search="{{ $haystack }}">
+  <span class="card__rail" aria-hidden="true"></span>
+  <p class="card__eyebrow">
+    <span class="card__num">{{ $p.Params.节号 }}.{{ $p.Params.条号 }}</span>
+    {{- if .showSection }}<span class="card__sec">{{ $p.Params.节名 }}</span>{{ end }}
+  </p>
+  <h3 class="card__title"><a class="card__link" href="{{ $p.RelPermalink }}">{{ $p.Title }}</a></h3>
+  <p class="card__lead">{{ $p.Params.说人话 }}</p>
+  <ul class="badges">
+    <li class="badge badge--claim badge--{{ $claimClass }}">
+      <span class="badge__k">主张强度</span><span class="badge__v">{{ $claim | default "未标注" }}</span>
+    </li>
+    <li class="badge badge--proof badge--{{ $proofClass }}">
+      <span class="meter meter--{{ $level }}" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="badge__k">举证难度</span><span class="badge__v">{{ $proof | default "未标注" }}</span>
+    </li>
+    <li class="badge badge--rank"><span class="badge__k">效力位阶</span><span class="badge__v">{{ $rank | default "未标注" }}</span></li>
+    {{- with $date }}
+    <li>
+      <time class="badge badge--date" datetime="{{ . }}" data-checked="{{ . }}">
+        <span class="badge__k">核对</span><span class="badge__v">{{ . }}</span>
+        <span class="badge__flag" data-stale-flag hidden>待复核</span>
+      </time>
+    </li>
+    {{- end }}
+  </ul>
+  <div class="card__foot">
+    <span class="card__basis">依据：{{ $p.Params.依据 }}</span>
+    <ul class="chips card__chips">
+      {{- range $key := slice "钱" "时间" "毅力" "收益" }}
+        {{- with index $cost $key }}<li class="chip"><b>{{ $key }}</b>{{ partial "logic/cost-label.html" (dict "key" $key "v" .) }}</li>{{ end }}
+      {{- end }}
+      {{- with index $cost "口径" }}<li class="chip chip--scope"><b>口径</b>{{ partial "logic/cost-label.html" (dict "key" "口径" "v" .) }}</li>{{ end }}
+    </ul>
+  </div>
+</article>

@@ -1,17 +1,21 @@
 <!DOCTYPE html>
-<html lang="{{ site.Language.Locale }}" dir="{{ or site.Language.Direction `ltr` }}">
+<html lang="{{ site.Language.Locale }}" dir="{{ or site.Language.Direction `ltr` }}"
+      data-base="{{ site.Home.RelPermalink }}"
+      data-stale-days="{{ site.Params.staleDays | default 180 }}">
 <head>
   {{ partial "head.html" . }}
 </head>
 <body>
-  <header>
-    {{ partial "header.html" . }}
-  </header>
-  <main>
-    {{ block "main" . }}{{ end }}
-  </main>
-  <footer>
-    {{ partial "footer.html" . }}
-  </footer>
+  <a class="skip-link" href="#main">跳到正文</a>
+  {{ partial "header.html" . }}
+  <div class="shell">
+    <aside class="sidebar" id="sidebar" aria-label="全书目录">
+      {{ partial "sidebar.html" . }}
+    </aside>
+    <main class="main" id="main">
+      {{ block "main" . }}{{ end }}
+    </main>
+  </div>
+  {{ partial "footer.html" . }}
 </body>
 </html>

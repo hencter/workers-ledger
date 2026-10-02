@@ -1,0 +1,7 @@
+{{- /* 来源栏：先转义，再把 http(s) 链接变成可点的锚点。
+       入参：dict "v" 来源原文
+       禁止把未转义文本直接 safeHTML 出去，所以顺序是先 htmlEscape 再 replaceRE。 */ -}}
+{{- $v := .v | default "" -}}
+{{- $escaped := $v | htmlEscape -}}
+{{- $linked := $escaped | replaceRE `(https?://[^\s<>（）()【】「」，；]+)` `<a class="src-link" href="$1" rel="nofollow noopener noreferrer" target="_blank">$1</a>` -}}
+{{- $linked | safeHTML -}}
