@@ -2,3 +2,6 @@
 public/
 resources/
 .hugo_build.lock
+
+# 临时构建目录（验收取证、压缩形态对比、脚本自测用），跑完即删，但别让它进版本库
+.tmp-*/
