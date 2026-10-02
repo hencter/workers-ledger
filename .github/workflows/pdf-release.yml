@@ -61,6 +61,23 @@ jobs:
           hugo-version: '0.167.0'
           extended: true
 
+      # 中文字体是硬依赖，不是可选项。
+      # 浏览器打印时若找不到中文字体，正文会整篇渲染成豆腐块（□）而不会报错——
+      # 产出的 PDF 页数看着正常、文件也不小，肉眼一看才发现全是方框。
+      # 曾观察到一份 674 页的豆腐块 PDF，就是在缺字体的 Linux 环境里生成的。
+      # Ubuntu runner 默认不带中文字体，必须显式装；装完列出字体清单自证。
+      - name: 安装中文字体（缺了会让正文变豆腐块）
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-cjk-extra
+          echo "已安装的中文字体（前若干项）："
+          fc-list :lang=zh | head -n 12
+          if [ -z "$(fc-list :lang=zh)" ]; then
+            echo "没有可用的中文字体，PDF 会渲染成豆腐块，中止" >&2
+            exit 1
+          fi
+
       # 确认 Chromium 已在 PATH 上，并打印版本——排查问题时要看它
       - name: 确认无头浏览器可用
         run: |

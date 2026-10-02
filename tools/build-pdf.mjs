@@ -255,7 +255,7 @@ async function loadBook(opts, reader) {
     for (const e of list) {
       const article = sliceTag(stripScripts(await reader.text(`${e.url}index.html`)), 'article', 'entry')
       if (!article) throw new Error(`条目页里找不到 <article class="entry">：${e.url}`)
-      entries.push({ meta: e, html: withId(article, `entry-${e.节号}-${e.条号}`) })
+      entries.push({ meta: e, html: withId(demoteHeadings(article), `entry-${e.节号}-${e.条号}`) })
     }
     sections.push({ num, name: list[0].节名 || '', headHtml: withId(headHtml, `sec-${num}`), entries })
   }
@@ -263,6 +263,20 @@ async function loadBook(opts, reader) {
 }
 
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+/** 把条目标题从 h1 降为 h2，子标题顺延（h2→h3、h3→h4）。
+ *
+ * 为什么必须降级：浏览器只按 h1–h6 的嵌套生成 PDF 书签，标题级别就是目录层级。
+ * 站点里节与条目各是一页、各自都用 h1，拼成一个打印源后两者同级，
+ * 实测第一版 346 个书签有 342 个在第 1 级——目录完全没有层级（用户反馈的就是这个）。
+ * 降到 h2 后，节的 h1 成为父节点，条目挂到所属节下面。
+ * 从 h3 → h4 倒序替换，避免先改 h2 又把刚生成的 h2 二次降级。 */
+function demoteHeadings(html) {
+  return html
+    .replace(/<(\/?)h3(\s[^>]*)?>/g, '<$1h4$2>')
+    .replace(/<(\/?)h2(\s[^>]*)?>/g, '<$1h3$2>')
+    .replace(/<(\/?)h1(\s[^>]*)?>/g, '<$1h2$2>')
+}
 
 /* ------------------------------------------------------- 合成打印源 HTML */
 
@@ -281,11 +295,41 @@ html, body { background: #fff !important; }
 .book-titlepage { break-after: page; text-align: center; padding-top: 45mm; }
 .book-front, .book-part { break-before: page; }
 
+/* 书签层级（PDF 目录树）。
+   浏览器只按 h1–h6 的嵌套关系生成书签，所以标题级别就等于目录层级。
+   站点里节与条目分属不同页面、各自都是 h1，拼成一个打印源后层级就平了——
+   实测第一版 346 个书签里有 342 个都在第 1 级，目录完全没有层级。
+   所以把条目标题降为 h2：节的 h1 成为父节点，每个条目挂到所属节下面。
+   字号手动补回章节标题该有的大小（条目原本就是按 h1 排的）。 */
+.entry > h2 {
+  font-size: 15pt; font-weight: 700; line-height: 1.35;
+  margin: 0 0 .5em;
+}
+.book-toc__entries .book-toc__sub { padding-left: 1.2em; }
+
 /* 标题不留在页底；能整块放下的条目块不要被切断 */
 h1, h2, h3, h4 { break-after: avoid-page; }
-.entry > h1, .entry__eyebrow, .badges, .lead-block, .field, .note, .card,
+.entry > h2, .entry__eyebrow, .badges, .lead-block, .field, .note, .card,
 .dist__col, .gauge, .page-head { break-inside: avoid; }
 .entry__eyebrow, .badges { break-after: avoid-page; }
+
+/* 条目头（标题 + 小标签 + 徽章）当一页放不下时不要被撕开：
+   让它们作为整体挪到下一页，而不是标题留在上一页、徽章跑到下一页。
+   这一条配合上面 .entry > h2 的 break-after，解决「条目开头被拆散」。 */
+.entry__eyebrow, .badges { break-before: avoid-page; }
+.entry__eyebrow { display: inline-block; }
+.badges { display: flex; }
+
+/* 表格与字段列表不跨页断开：一行拆到两页会看不懂 */
+tr, dd, dt { break-inside: avoid; }
+dl.fields { break-inside: auto; }
+
+/* 孤行寡行：段末只剩一行被推到下一页（孤行），或段首只带一行过来（寡行），
+   是中文长段落里最刺眼的排版问题。三行起算。 */
+p, li { orphans: 3; widows: 3; }
+
+/* 字段区里「栏目名 + 内容」成对，别让栏目名留在页底而内容翻页 */
+dt + dd { break-before: avoid-page; }
 
 /* 条目之间给一道分隔线，翻页时能看清从哪儿开始 */
 .entry + .entry { border-top: 1px solid #ccc; margin-top: 1.5em; padding-top: 1.1em; }

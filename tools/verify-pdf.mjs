@@ -389,30 +389,46 @@ add('/Lang 声明 zh-CN', String(lang || '') === 'zh-CN', JSON.stringify(lang))
 
 // 书签（Chrome 的 generateDocumentOutline）
 let outlineCount = 0
+// 层级统计。为什么要统计：用户反馈「目录没有层级」，而当时这里只断言
+// 「有书签」——346 个书签里有 342 个挤在第 1 级，这个断言照样通过。
+// 所以必须量深度分布，否则同一个问题会再次溜过去。
+const outlineDepth = new Map()
+let outlineMaxDepth = 0
 {
   const seen = new Set()
-  const walk = (id) => {
-    if (!id || seen.has(id)) return
-    seen.add(id)
-    const dict = dictOf(id)
-    if (!dict) return
-    outlineCount++
-    const first = refOf(dict, 'First')
-    if (first) {
-      let cur = first
-      let guard = 0
-      while (cur && guard++ < 5000) {
-        const d = dictOf(cur)
-        if (!d) break
-        outlineCount++
-        walk(refOf(d, 'First'))
-        cur = refOf(d, 'Next')
-      }
+  // 从某个节点的 First 开始，逐个兄弟递归：每项按自己的深度记一次
+  const walkSiblings = (firstId, depth) => {
+    let cur = firstId
+    let guard = 0
+    while (cur && guard++ < 5000) {
+      if (seen.has(cur)) break
+      seen.add(cur)
+      const d = dictOf(cur)
+      if (!d) break
+      outlineCount++
+      outlineDepth.set(depth, (outlineDepth.get(depth) || 0) + 1)
+      if (depth > outlineMaxDepth) outlineMaxDepth = depth
+      const child = refOf(d, 'First')
+      if (child) walkSiblings(child, depth + 1)
+      cur = refOf(d, 'Next')
     }
   }
-  walk(catalog ? refOf(catalog, 'Outlines') : null)
+  const outlinesId = catalog ? refOf(catalog, 'Outlines') : null
+  const outlinesDict = outlinesId ? dictOf(outlinesId) : null
+  const top = outlinesDict ? refOf(outlinesDict, 'First') : null
+  if (top) walkSiblings(top, 1)
 }
+// 根 /Outlines 字典本身不计入，上面从它的 First 开始
 add('含 PDF 书签（大纲）', outlineCount > 0, `${outlineCount} 个书签节点`)
+const lvl1 = outlineDepth.get(1) || 0
+const lvl2 = outlineDepth.get(2) || 0
+add('书签有层级（不只是扁平列表）', outlineMaxDepth >= 2,
+  `最大深度 ${outlineMaxDepth}；第 1 级 ${lvl1} 个、第 2 级 ${lvl2} 个`)
+// 第 1 级应该只有封面/目录/各节（约 18 个）；若又回到几百个，说明条目标题
+// 又和节标题同级了——这是 demoteHeadings 失效的信号。
+add('第 1 级书签数量合理（条目挂在节下，不与之平级）', lvl1 > 0 && lvl1 <= 40,
+  `第 1 级 ${lvl1} 个（期望 ≤ 40：封面 + 目录 + 15 个节）`)
+add('第 2 级书签覆盖条目', lvl2 >= 300, `第 2 级 ${lvl2} 个（324 条条目）`)
 
 // 链接：站内跳转应做成 PDF 内部锚点；外部引文链接应保持真实网址；都不该指向本地服务
 const uris = [...S.matchAll(/\/URI\s*\(([^)]*)\)/g)].map((m) => m[1])
