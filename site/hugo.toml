@@ -18,7 +18,7 @@ enableRobotsTXT = true
 # 本书不用标签分类，关掉以免生成空的分类页
 disableKinds = ['taxonomy', 'term']
 
-theme = 'workrights'
+theme = 'ledger'
 
 [params]
   # 首页副标题：一句话说清这本书记的是什么

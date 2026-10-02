@@ -35,7 +35,7 @@ const outArg = args.indexOf('--out')
 const OUT = outArg >= 0 && args[outArg + 1]
   ? path.resolve(process.cwd(), args[outArg + 1])
   : path.join(SITE, 'public')
-const JS_BASE = url.pathToFileURL(path.join(SITE, 'themes/workrights/assets/js/')).href
+const JS_BASE = url.pathToFileURL(path.join(SITE, 'themes/ledger/assets/js/')).href
 const STALE_DAYS = 180
 
 let total = 0

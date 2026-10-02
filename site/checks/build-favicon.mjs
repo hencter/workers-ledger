@@ -21,8 +21,8 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SITE = resolve(HERE, '..')
-const SVG = join(SITE, 'themes', 'workrights', 'static', 'favicon.svg')
-const OUT_DIR = join(SITE, 'themes', 'workrights', 'static')
+const SVG = join(SITE, 'themes', 'ledger', 'static', 'favicon.svg')
+const OUT_DIR = join(SITE, 'themes', 'ledger', 'static')
 
 const BROWSERS = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
