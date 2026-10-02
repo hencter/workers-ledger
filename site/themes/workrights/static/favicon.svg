@@ -1,5 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="劳动权益与合规指南">
-  <rect width="64" height="64" rx="12" fill="#a3372a"/>
-  <rect x="6.5" y="6.5" width="51" height="51" rx="8" fill="none" stroke="#fff8f4" stroke-opacity=".55" stroke-width="2"/>
-  <text x="32" y="43" text-anchor="middle" font-family="Microsoft YaHei, PingFang SC, sans-serif" font-size="30" font-weight="700" fill="#fff8f4">劳</text>
+  <title>劳动权益与合规指南</title>
+  <!-- 印章式标记：红底、描边内框、白色「劳」字。
+       这里用 <text> 而不是把字形转成路径：浏览器渲染 <text> 时会应用系统字体，
+       用户侧显示正常，而矢量本身可无损缩放。
+       字体依赖由 PNG/ICO 那一份兜住——site/checks/build-favicon.mjs 用本机浏览器
+       把本文件栅格化成 16/32/48 三档 PNG 并拼出 favicon.ico，
+       那份是位图，任何浏览器与抓取器都能正确显示，不依赖对方有没有中文字体。
+       字体栈末尾保留 sans-serif 作为兜底，避免完全不渲染。 -->
+  <rect width="64" height="64" rx="13" fill="#a3372a"/>
+  <rect x="5.5" y="5.5" width="53" height="53" rx="7.5" fill="none"
+        stroke="#fff8f4" stroke-opacity=".5" stroke-width="2"/>
+  <text x="32" y="45" text-anchor="middle" font-weight="700" font-size="34"
+        font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, Source Han Sans SC, Heiti SC, SimHei, sans-serif"
+        fill="#fff8f4">劳</text>
 </svg>
