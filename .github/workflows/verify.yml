@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  条目结构:
+  items:
     name: 条目结构校验
     # 定时任务只跑来源时效，条目结构与脱敏扫描在 push / PR / 手动触发时跑
     if: github.event_name != 'schedule'
@@ -44,7 +44,7 @@ jobs:
       - name: 运行条目结构校验
         run: node tools/check-items.mjs --check --summary "$GITHUB_STEP_SUMMARY"
 
-  来源时效:
+  sources:
     name: 来源时效与链接监控
     runs-on: ubuntu-latest
     # 联网抓一批官方页面要慢得多，给足时间
@@ -72,7 +72,7 @@ jobs:
             node tools/check-sources.mjs --offline --check --summary "$GITHUB_STEP_SUMMARY"
           fi
 
-  脱敏扫描:
+  desensitize:
     name: 脱敏扫描
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
