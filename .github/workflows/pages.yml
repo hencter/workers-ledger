@@ -69,11 +69,15 @@ jobs:
           HUGO_ENVIRONMENT: production
         run: |
           set -euo pipefail
-          # 发布地址优先取 site.config.json 的 publishUrl（绑了自定义域名后，
+          # 发布地址优先取仓库根目录 site.config.json 的 publishUrl（绑了自定义域名后，
           # 按仓库名推导会得到 hencter.github.io/workers-ledger/，与自定义域名
           # 冲突，canonical 会指向另一个地址）。该文件不存在时才退回推导。
-          if [ -f site.config.json ]; then
-            base=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('site.config.json','utf8')).publishUrl)")
+          #
+          # 注意：本步骤的 working-directory 是 site/，配置文件在仓库根，
+          # 相对路径 site.config.json 会永远判定为不存在，必须用绝对路径。
+          config="${GITHUB_WORKSPACE}/site.config.json"
+          if [ -f "$config" ]; then
+            base=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).publishUrl)" "$config")
             echo "发布地址取自 site.config.json"
           else
             reponame="${GITHUB_REPOSITORY#*/}"
@@ -96,8 +100,20 @@ jobs:
       - name: 确认绝对地址写进了产物
         run: |
           set -euo pipefail
-          grep -Fq "<link rel=\"canonical\" href=\"${SITE_BASE}\"" site/public/index.html
-          echo "canonical 指向：${SITE_BASE}"
+          # 模板源文件写的是带引号的 <link rel="canonical" href="...">，
+          # 但 hugo --minify 会省掉属性引号，产物里实际是不带引号的形式。
+          # 先把两种形态归一化再比对，否则这个断言会被压缩行为左右，
+          # 与正文对不对无关。
+          node -e '
+            const fs = require("fs");
+            const flat = fs.readFileSync("site/public/index.html", "utf8").replace(/"/g, "");
+            const want = "<link rel=canonical href=" + process.env.SITE_BASE;
+            if (!flat.includes(want)) {
+              console.error("canonical 未指向 " + process.env.SITE_BASE);
+              process.exit(1);
+            }
+            console.log("canonical 指向：" + process.env.SITE_BASE);
+          '
 
       - name: 渲染校验（模板分档 / 前端筛选 / 硬约束）
         run: node site/checks/render-check.mjs
