@@ -7,10 +7,17 @@ Thumbs.db
 .vscode/
 .idea/
 
-# 核验过程中的临时抓取文件，不对外，也不进版本库
+# 核验过程中的临时抓取文件：法规原文抓取、审计中间产物。
+# 一律不进版本库——它们是过程草稿，而且体积大、会随每次核验变化。
+# 需要留痕的是 docs/核实记录/ 下的结论，不是原始抓取物。
 .tmp-verify/
 .tmp-audit/
+.tmp-reg/
+.tmp-*/
 .tmp/
+
+# Hugo 脚手架演示内容：hugo new theme 会带出 posts 样例，与本仓库无关
+site/themes/*/content/
 
 # Hugo 构建产物：只跟踪源，不跟踪输出
 site/public/
