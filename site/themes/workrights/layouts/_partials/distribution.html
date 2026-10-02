@@ -21,11 +21,11 @@
       {{- range $bucket := slice "可主张" "可推定" "倡导性" -}}
         {{- $n := 0 -}}
         {{- range $entries -}}
-          {{- if eq (partial "logic/claim.html" (dict "v" (index . "主张强度"))) $bucket -}}
+          {{- if eq (partialCached "logic/claim.html" (dict "v" (index . "主张强度")) (printf "claim|%s" (index . "主张强度"))) $bucket -}}
             {{- $n = add $n 1 -}}
           {{- end -}}
         {{- end -}}
-        {{- $class := partial "logic/badge-class.html" (dict "kind" "claim" "v" $bucket) -}}
+        {{- $class := partialCached "logic/badge-class.html" (dict "kind" "claim" "v" $bucket) (printf "class|claim|%s" $bucket) -}}
         {{- $pct := 0 -}}
         {{- if gt $total 0 }}{{ $pct = div (mul $n 100) $total }}{{ end -}}
       <p class="gauge gauge--{{ $class }}">
@@ -41,11 +41,11 @@
       {{- range $bucket := slice "易" "中" "难" -}}
         {{- $n := 0 -}}
         {{- range $entries -}}
-          {{- if eq (partial "logic/proof.html" (dict "v" (index . "举证难度"))) $bucket -}}
+          {{- if eq (partialCached "logic/proof.html" (dict "v" (index . "举证难度")) (printf "proof|%s" (index . "举证难度"))) $bucket -}}
             {{- $n = add $n 1 -}}
           {{- end -}}
         {{- end -}}
-        {{- $class := partial "logic/badge-class.html" (dict "kind" "proof" "v" $bucket) -}}
+        {{- $class := partialCached "logic/badge-class.html" (dict "kind" "proof" "v" $bucket) (printf "class|proof|%s" $bucket) -}}
         {{- $pct := 0 -}}
         {{- if gt $total 0 }}{{ $pct = div (mul $n 100) $total }}{{ end -}}
       <p class="gauge gauge--{{ $class }}">
@@ -61,13 +61,13 @@
       {{- range $bucket := slice "法律" "行政法规" "部门规章" "司法解释" "地方性法规" "规范性文件" "地方口径" "无明文依据" -}}
         {{- $n := 0 -}}
         {{- range $entries -}}
-          {{- if in (partial "logic/ranks.html" (dict "v" (index . "效力位阶"))) $bucket -}}
+          {{- if in (partialCached "logic/ranks.html" (dict "v" (index . "效力位阶")) (printf "ranks|%s" (index . "效力位阶"))) $bucket -}}
             {{- $n = add $n 1 -}}
           {{- end -}}
         {{- end -}}
         {{- $pct := 0 -}}
         {{- if gt $total 0 }}{{ $pct = div (mul $n 100) $total }}{{ end -}}
-      <p class="gauge gauge--claim-weak">
+      <p class="gauge gauge--neutral">
         <span class="gauge__label">{{ $bucket }}</span>
         <span class="gauge__bar"><span class="gauge__fill" style="width: {{ $pct }}%"></span></span>
         <span class="gauge__val">{{ $n }}</span>

@@ -1,0 +1,111 @@
+name: 发布站点
+
+# 构建链：book/ 正文 → tools/build-site.mjs 生成 site/content 与 site/data/entries.json
+#        → Hugo 构建 site/public → 上传发布到 GitHub Pages
+#
+# 三道门禁，任何一道失败都不发布：
+#   1. 生成脚本：解析 book/ 时字段缺失、编号不连续等结构问题会让它退出非 0
+#   2. 生成哨兵：独立重解析正文，与索引逐字段对账
+#   3. 渲染校验：模板分档与前端筛选逻辑对账、每条 url 都能落到真实产物、硬约束扫描
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 发布 Pages 需要的权限，缺一不可
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一次发布，且不打断进行中的发布
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  构建:
+    name: 构建站点
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 取出仓库内容
+        uses: actions/checkout@v4
+
+      - name: 准备 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: 从 book/ 生成站点内容与索引
+        run: node tools/build-site.mjs
+
+      - name: 生成哨兵：正文与索引逐字段对账
+        run: node tools/check-site.mjs
+
+      # 站点用 css.Build / js.Build 打包本地资源，不依赖 npm，也不需要 dart-sass
+      - name: 安装 Hugo（版本与本地一致）
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.167.0'
+          extended: true
+
+      - name: 核对 Hugo 版本
+        run: |
+          set -euo pipefail
+          hugo version | tee /tmp/hugo-version.txt
+          grep -q 'v0.167.0' /tmp/hugo-version.txt
+          grep -q 'extended' /tmp/hugo-version.txt
+
+      # baseURL 必须是最终访问地址：canonical 与 Open Graph 都按它输出绝对地址。
+      # 本仓库没有配置远端，所以这里从 GitHub 默认环境变量推：
+      #   用户/组织页（仓库名 = <owner>.github.io）→ https://<owner>.github.io/
+      #   项目页（其余仓库名）              → https://<owner>.github.io/<仓库名>/
+      # 要换成自定义域名，把下面这段改成固定地址即可。
+      - name: 构建站点（生产环境）
+        working-directory: site
+        env:
+          HUGO_ENVIRONMENT: production
+        run: |
+          set -euo pipefail
+          reponame="${GITHUB_REPOSITORY#*/}"
+          if [ "$reponame" = "${GITHUB_REPOSITORY_OWNER}.github.io" ]; then
+            base="https://${GITHUB_REPOSITORY_OWNER}.github.io/"
+          else
+            base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${reponame}/"
+          fi
+          echo "站点绝对地址：$base"
+          {
+            echo "### 站点地址"
+            echo ""
+            echo "$base"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "SITE_BASE=$base" >> "$GITHUB_ENV"
+          hugo --minify --baseURL "$base" --printPathWarnings --printUnusedTemplates
+
+      - name: 确认绝对地址写进了产物
+        run: |
+          set -euo pipefail
+          grep -Fq "<link rel=\"canonical\" href=\"${SITE_BASE}\"" site/public/index.html
+          echo "canonical 指向：${SITE_BASE}"
+
+      - name: 渲染校验（模板分档 / 前端筛选 / 硬约束）
+        run: node site/checks/render-check.mjs
+
+      - name: 上传 Pages 产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/public
+
+  发布:
+    name: 发布到 GitHub Pages
+    needs: 构建
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: 部署产物
+        id: deploy
+        uses: actions/deploy-pages@v4

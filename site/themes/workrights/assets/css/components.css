@@ -255,6 +255,7 @@
 .gauge--proof-easy { color: var(--proof-easy); }
 .gauge--proof-mid { color: var(--proof-mid); }
 .gauge--proof-hard { color: var(--proof-hard); }
+.gauge--neutral { color: var(--text-dim); }
 
 .stats { display: flex; flex-wrap: wrap; gap: var(--sp-6); margin: var(--sp-5) 0 0; }
 .stat__n { font-family: var(--font-mono); font-size: var(--fs-600); font-weight: 700; }

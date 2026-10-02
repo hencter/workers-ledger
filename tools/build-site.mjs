@@ -266,6 +266,11 @@ function main() {
     }))
     out.push({ section, slug, index: sectionIndex(section, entries), pages })
     for (const e of entries) {
+      // 刻意不输出「路径」字段。站点 URL 由 Hugo 的 slug 规则决定，而它会剔除中文
+      // 标点（「加班费三档：平日…、休息日…」发布成 `01-加班费三档平日…休息日…`）。
+      // 生成脚本若要给出准确 URL，就得复刻 Hugo 的 slug 规则，那是重复实现别处的
+      // 逻辑，Hugo 一改就会静默漂移——而一个不准的路径字段比没有更危险，消费方会
+      // 信它然后 404。站点模板用 `.RelPermalink` 取真实地址即可。
       allEntries.push({
         节号: Number(section.number),
         节名: section.title,
@@ -274,7 +279,6 @@ function main() {
         说人话: stripInline(e.说人话),
         ...Object.fromEntries(FIELDS.filter((f) => f !== '说人话').map((f) => [f, stripInline(e.fields[f] || '')])),
         成本标签: e.成本标签,
-        路径: `/${slug}/${String(e.number).padStart(2, '0')}-${safeSlug(e.title)}/`,
       })
     }
   }

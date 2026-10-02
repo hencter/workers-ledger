@@ -2,14 +2,14 @@
        入参：dict "page" 条目页 "showSection" 是否显示节名 */ -}}
 {{- $p := .page -}}
 {{- $claimRaw := $p.Params.主张强度 | default "" -}}
-{{- $claim := partial "logic/claim.html" (dict "v" $claimRaw) -}}
-{{- $claimClass := partial "logic/badge-class.html" (dict "kind" "claim" "v" $claim) -}}
+{{- $claim := partialCached "logic/claim.html" (dict "v" $claimRaw) (printf "claim|%s" $claimRaw) -}}
+{{- $claimClass := partialCached "logic/badge-class.html" (dict "kind" "claim" "v" $claim) (printf "class|claim|%s" $claim) -}}
 {{- $proofRaw := $p.Params.举证难度 | default "" -}}
-{{- $proof := partial "logic/proof.html" (dict "v" $proofRaw) -}}
-{{- $proofClass := partial "logic/badge-class.html" (dict "kind" "proof" "v" $proof) -}}
+{{- $proof := partialCached "logic/proof.html" (dict "v" $proofRaw) (printf "proof|%s" $proofRaw) -}}
+{{- $proofClass := partialCached "logic/badge-class.html" (dict "kind" "proof" "v" $proof) (printf "class|proof|%s" $proof) -}}
 {{- $level := 0 -}}
 {{- if eq $proof "易" }}{{ $level = 1 }}{{ else if eq $proof "中" }}{{ $level = 2 }}{{ else if eq $proof "难" }}{{ $level = 3 }}{{ end -}}
-{{- $rank := partial "logic/rank.html" (dict "v" ($p.Params.效力位阶 | default "")) -}}
+{{- $rank := partialCached "logic/rank.html" (dict "v" ($p.Params.效力位阶 | default "")) (printf "rank|%s" ($p.Params.效力位阶 | default "")) -}}
 {{- $date := $p.Params.核对日期 | default "" -}}
 {{- $cost := $p.Params.成本标签 | default dict -}}
 {{- $haystack := printf "%s %s %s %s %s %s" $p.Title $p.Params.说人话 $p.Params.依据 $p.Params.备注 $p.Params.适用 $p.Params.节名 | lower -}}
@@ -44,9 +44,9 @@
     <span class="card__basis">依据：{{ $p.Params.依据 }}</span>
     <ul class="chips card__chips">
       {{- range $key := slice "钱" "时间" "毅力" "收益" }}
-        {{- with index $cost $key }}<li class="chip"><b>{{ $key }}</b>{{ partial "logic/cost-label.html" (dict "key" $key "v" .) }}</li>{{ end }}
+        {{- with index $cost $key }}<li class="chip"><b>{{ $key }}</b>{{ partialCached "logic/cost-label.html" (dict "key" $key "v" .) (printf "cost|%s|%v" $key .) }}</li>{{ end }}
       {{- end }}
-      {{- with index $cost "口径" }}<li class="chip chip--scope"><b>口径</b>{{ partial "logic/cost-label.html" (dict "key" "口径" "v" .) }}</li>{{ end }}
+      {{- with index $cost "口径" }}<li class="chip chip--scope"><b>口径</b>{{ partialCached "logic/cost-label.html" (dict "key" "口径" "v" .) (printf "cost|%s|%v" "口径" .) }}</li>{{ end }}
     </ul>
   </div>
 </article>

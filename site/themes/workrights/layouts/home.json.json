@@ -15,15 +15,15 @@
 {{- $list := slice -}}
 {{- range $e := $raw -}}
   {{- $claimRaw := index $e "主张强度" | default "" -}}
-  {{- $claim := partial "logic/claim.html" (dict "v" $claimRaw) -}}
+  {{- $claim := partialCached "logic/claim.html" (dict "v" $claimRaw) (printf "claim|%s" $claimRaw) -}}
   {{- $proofRaw := index $e "举证难度" | default "" -}}
-  {{- $proof := partial "logic/proof.html" (dict "v" $proofRaw) -}}
+  {{- $proof := partialCached "logic/proof.html" (dict "v" $proofRaw) (printf "proof|%s" $proofRaw) -}}
   {{- $proofParts := split $proofRaw "——" -}}
   {{- $proofRest := "" -}}
   {{- if gt (len $proofParts) 1 -}}{{- $proofRest = delimit (after 1 $proofParts) "——" -}}{{- end -}}
   {{- $rankRaw := index $e "效力位阶" | default "" -}}
-  {{- $rank := partial "logic/rank.html" (dict "v" $rankRaw) -}}
-  {{- $ranks := partial "logic/ranks.html" (dict "v" $rankRaw) -}}
+  {{- $rank := partialCached "logic/rank.html" (dict "v" $rankRaw) (printf "rank|%s" $rankRaw) -}}
+  {{- $ranks := partialCached "logic/ranks.html" (dict "v" $rankRaw) (printf "ranks|%s" $rankRaw) -}}
   {{- $path := index $e "路径" | default "" -}}
   {{- $url := index $urls (printf "%v.%v" (index $e "节号") (index $e "条号")) | default "" -}}
   {{- if not $url -}}
