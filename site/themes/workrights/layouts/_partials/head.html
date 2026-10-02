@@ -25,7 +25,16 @@
 {{- with .Permalink }}
 <link rel="canonical" href="{{ . }}">
 {{- end }}
+    {{- /* 图标三件套，顺序有讲究：
+           SVG 在前，现代浏览器优先取它（矢量、可缩放）；
+           ICO 在后兜住 Safari（不支持 SVG favicon）与各类抓取器、RSS 阅读器；
+           apple-touch-icon 给 iOS 添加到主屏用。
+           PNG/ICO 两份由 site/checks/build-favicon.mjs 从 favicon.svg 栅格化而来，
+           它们不依赖对方系统有没有中文字体——SVG 里那个「劳」是 <text>。 */ -}}
 <link rel="icon" type="image/svg+xml" href="{{ "favicon.svg" | relURL }}">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ "favicon-32.png" | relURL }}">
+<link rel="icon" href="{{ "favicon.ico" | relURL }}" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="{{ "favicon-48.png" | relURL }}">
 
 {{ partial "head/og.html" . }}
 {{ partial "head/jsonld.html" . }}

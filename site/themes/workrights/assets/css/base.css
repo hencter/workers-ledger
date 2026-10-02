@@ -11,6 +11,32 @@ html {
   scroll-padding-top: calc(var(--topbar-h) + 12px);
 }
 
+/* 滚动条。
+   默认滚动条在深色模式下会露出一条亮灰硬边，和纸墨配色冲突（浅色下也偏突兀，
+   侧栏那条尤其明显）。这里统一改成细的、只有一个拇指、悬停才明显。
+   先写标准属性（Firefox 认这一类），再写 WebKit 伪元素（Chrome/Edge/Safari）。 */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+/* 需要滚动容器的元素各自声明一次：scrollbar-color 不继承到已建立滚动上下文的子元素之外，
+   侧栏是独立滚动区（overflow-y: auto），必须单独给。 */
+.sidebar { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--line-strong) 80%, transparent);
+  border-radius: 999px;
+  /* 透明边框把拇指收细，同时保留可点区域宽度 */
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+::-webkit-scrollbar-corner { background: transparent; }
+
 body {
   margin: 0;
   background: var(--bg);
