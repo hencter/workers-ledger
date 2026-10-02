@@ -86,12 +86,18 @@ check('非法日期不报超期', isStale('不是日期', STALE_DAYS, new Date(2
 check('关键词归一化压平全角空格', search.normalize('加班　费'), '加班 费')
 
 const state = { q: '加班费', facets: Object.fromEntries(search.FACETS.map((f) => [f.key, []])) }
-state.facets.sec = ['11']
 state.facets.claim = ['可主张']
+state.facets.proof = ['难']
 const roundTrip = search.parseState(search.toQuery(state))
 check('query 往返·关键词', roundTrip.q, '加班费')
-check('query 往返·节', roundTrip.facets.sec.join(','), '11')
 check('query 往返·主张强度', roundTrip.facets.claim.join(','), '可主张')
+check('query 往返·举证难度', roundTrip.facets.proof.join(','), '难')
+
+// 检索面板不提供「按节筛选」—— 按节收窄由左侧目录负责，两处入口是重复。
+// 这条断言防止它被无意中加回来。
+// 注意：不要把这条写成对 homeHtml 的静态匹配。facets 是脚本运行时生成的，
+// 静态 HTML 里从来没有 data-facet 属性，那样的断言永远不会失败，只是虚假的安心。
+check('筛选维度不含「节」', search.FACETS.some((f) => f.key === 'sec'), false)
 
 // —— B. 归一化一致性 ——
 const empty = { q: '', facets: Object.fromEntries(search.FACETS.map((f) => [f.key, []])) }
