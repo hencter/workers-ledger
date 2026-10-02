@@ -398,13 +398,15 @@ let outlineCount = 0
 }
 add('含 PDF 书签（大纲）', outlineCount > 0, `${outlineCount} 个书签节点`)
 
-// 链接：PDF 里的 /URI 注解应当指向公开发布地址
+// 链接：站内链接应指向发布地址（否则点开是本地服务死链）；外部引文链接保持原地址
 const uris = [...S.matchAll(/\/URI\s*\(([^)]*)\)/g)].map((m) => m[1])
 const linkBase = opt.linkBase.endsWith('/') ? opt.linkBase : `${opt.linkBase}/`
-const offBase = uris.filter((u) => !u.startsWith(linkBase))
+const internalLinks = uris.filter((u) => u.startsWith(linkBase))
+const localLeak = uris.filter((u) => /127\.0\.0\.1|localhost/.test(u))
 add('PDF 内含可点链接注解', uris.length > 0, `${uris.length} 个 /URI 注解`)
-add(`链接都指向发布地址 ${linkBase}`, uris.length > 0 && offBase.length === 0,
-  offBase.length ? `有 ${offBase.length} 个不是，例如 ${offBase.slice(0, 2).join('、')}` : `例如 ${uris[0] || '（无）'}`)
+add('没有链接指向本地服务（死链）', localLeak.length === 0, localLeak.length ? `有 ${localLeak.length} 个，例如 ${localLeak[0]}` : '0 个')
+add(`站内链接指向发布地址 ${linkBase}`, internalLinks.length > 0, `${internalLinks.length} 个，例如 ${internalLinks[0] || '（无）'}`)
+add('外部引文链接保持原地址', uris.length - internalLinks.length > 0, `${uris.length - internalLinks.length} 个，例如 ${(uris.find((u) => !u.startsWith(linkBase)) || '（无）')}`)
 
 // 抽查：三处指定条目正文
 const spots = [

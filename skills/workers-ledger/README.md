@@ -4,7 +4,7 @@
 
 装了这个 skill，AI 助手回答劳动权益问题时会**先查这本书的条目，再作答**，并注明出自第几节第几条。查不到就说查不到，不凭记忆编法条号、金额和期限。
 
-> 下文用 `<owner>` 代指托管账号，用 `workers-ledger` 代指仓库名。**发布前请把这两处替换成实际值**，否则克隆命令会失败。
+> 下文用 `hencter` 代指托管账号，用 `workers-ledger` 代指仓库名。**发布前请把这两处替换成实际值**，否则克隆命令会失败。
 
 ## 它和普通对话有什么不同
 
@@ -23,14 +23,14 @@
 
 ```bash
 # 克隆到一个固定位置
-git clone https://github.com/<owner>/workers-ledger.git ~/.claude/skills/workers-ledger
+git clone https://github.com/hencter/workers-ledger.git ~/.claude/skills/workers-ledger
 ```
 
 或者只把这个 skill 目录取出来：
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone --depth 1 --filter=blob:none --sparse https://github.com/<owner>/workers-ledger.git /tmp/wrcn
+git clone --depth 1 --filter=blob:none --sparse https://github.com/hencter/workers-ledger.git /tmp/wrcn
 cd /tmp/wrcn && git sparse-checkout set skills/workers-ledger
 cp -r skills/workers-ledger ~/.claude/skills/
 ```
