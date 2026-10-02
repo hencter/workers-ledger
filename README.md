@@ -120,6 +120,17 @@ cd site && hugo server -D --renderToMemory   # 本地预览（注意 --renderToM
 
 【生成哨兵】值得单独说一句：`site/content/` 是生成产物，不会跟着源码一起被人逐行审阅。如果没有 [tools/check-site.mjs](tools/check-site.mjs) 这道比对，生成脚本漏读或截断字段时，读正文的人不会发现，站点上却已经和正文不一致了。它独立重解析一遍正文再逐字段对账，刻意不复用生成脚本的代码——复用会让两边同时错。
 
+**生成物在版本库里的说明。** `site/content/` 与 `site/data/` 是**提交进仓库**的（一般 Hugo 项目会忽略它们）。原因：腾讯 EdgeOne Pages 的构建环境只保证有 Hugo、不保证有 Node，而生成内容这一步需要 Node；提交之后 Hugo 就能独立构建，实测不跑任何 Node 脚本即可产出 344 页、canonical 正确。代价是仓库里多了 1.9 MB 影子文件，且它与 `book/` 之间可能出现漂移——所以 `check-site.mjs` 里还有一道**同步检查**：重跑生成逻辑并逐文件比对磁盘结果，改了 `book/` 却忘了重新生成就会报错退出。**规矩不变：生成物不手工编辑，出问题一律重跑 `node tools/build-site.mjs`。**
+
+`book/` 与生成物之间的关系：
+
+```
+book/*.md  ──[tools/build-site.mjs]──▶  site/content/**   （Hugo 内容页，已提交）
+                                      └▶  site/data/entries.json（检索索引，已提交）
+```
+
+改完正文后照常跑一次生成脚本，然后连同生成物一起提交。
+
 ## 离线单文件版
 
 在线站解决不了两种用法：发到微信里、拷进手机断网打开。所以还有一个 [`index.html`](index.html)——整本书连同检索与筛选都在一个文件里，双击就开，不用服务器也不用联网，微信可直接传输。它同样由正文生成（经 `site/data/entries.json`），不是第三份内容。

@@ -10,6 +10,8 @@
 // 退出码：0 一致 / 1 有差异 / 2 环境错误
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -127,3 +129,58 @@ if (diffs.length) {
   process.exit(1)
 }
 console.log('结论：索引与正文逐字段一致。')
+
+/* ------------------------- 生成物与 book/ 是否同步
+ *
+ * site/content/ 与 site/data/ 现在**进了版本库**（原因见 .gitignore 里的说明：
+ * 腾讯 EdgeOne Pages 的构建环境只保证有 Hugo，不保证有 Node，而生成内容这一步
+ * 需要 Node。把生成物提交上去，Hugo 就能独立构建，实测 344 页、canonical 正确）。
+ *
+ * 代价是仓库里存在两份会漂移的东西：book/ 是真相源，site/content/ 是它的影子。
+ * 所以这里补一道同步检查：把生成脚本重跑一遍，逐个文件比对磁盘上的结果——
+ * 只要改了 book/ 却忘了重新生成，这里就会报错。
+ * 写进仓库的生成物不手工编辑，出问题一律重跑生成脚本。 */
+{
+  const contentDir = join(ROOT, 'site', 'content')
+  const buildScript = join(ROOT, 'tools', 'build-site.mjs')
+  if (existsSync(buildScript) && existsSync(contentDir)) {
+    // 记录生成前各文件的指纹，跑完生成后比对哪些文件内容变了
+    const fingerprint = (dir) => {
+      const out = new Map()
+      const walk = (d) => {
+        for (const e of readdirSync(d, { withFileTypes: true })) {
+          const p = join(d, e.name)
+          if (e.isDirectory()) walk(p)
+          else out.set(p, createHash('sha256').update(readFileSync(p)).digest('hex'))
+        }
+      }
+      walk(dir)
+      return out
+    }
+    const before = fingerprint(contentDir)
+    const dataFile = join(ROOT, 'site', 'data', 'entries.json')
+    const beforeData = existsSync(dataFile) ? readFileSync(dataFile) : null
+
+    const res = spawnSync(process.execPath, [buildScript], { encoding: 'utf8', cwd: ROOT })
+    if (res.status !== 0) {
+      console.error('\n[失败] 重跑生成脚本出错，无法判断生成物是否与 book/ 同步')
+      console.error(res.stdout?.slice(-800) || res.stderr?.slice(-800) || '')
+      process.exit(1)
+    }
+    const after = fingerprint(contentDir)
+    const changed = []
+    for (const [p, h] of after) if (before.get(p) !== h) changed.push(p)
+    for (const p of before.keys()) if (!after.has(p)) changed.push(`${p}（已删除）`)
+    const dataChanged = beforeData && existsSync(dataFile)
+      ? !beforeData.equals(readFileSync(dataFile)) : false
+
+    if (changed.length || dataChanged) {
+      console.error(`\n[失败] 提交的生成物与 book/ 不同步：${changed.length} 个内容文件${dataChanged ? '、索引已变化' : ''}`)
+      for (const p of changed.slice(0, 10)) console.error(`  - ${p.replace(ROOT + '\\', '').replace(ROOT + '/', '')}`)
+      console.error('  生成脚本刚刚重写/新增了它们，说明有人改了 book/ 却没有重新生成。')
+      console.error('  修复：node tools/build-site.mjs，然后把 site/content 与 site/data 一起提交。')
+      process.exit(1)
+    }
+    console.log(`生成物同步检查：site/content/ 下 ${after.size} 个文件与 book/ 一致。`)
+  }
+}

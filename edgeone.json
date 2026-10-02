@@ -1,0 +1,13 @@
+{
+  "//": "腾讯 EdgeOne Pages 的构建配置。官方文档：https://pages.edgeone.ai/zh/document/hugo",
+  "//hugoVersion": "EdgeOne 预装 Hugo Extended v0.147.5，而本项目在 0.167.0 上开发，两者间隔 20 个版本：本项目用到的 .Locale 字段与 locale 配置键都是 0.158 才引入的，在 0.147.5 上会直接构建失败（实测报 can't evaluate field Locale in type *langs.Language，以及 config key languageCode 的弃用错误）。hugoVersion 是官方文档给出的最高优先级覆盖方式，且 EdgeOne 始终安装 Extended 版。",
+  "hugoVersion": "0.167.0",
+
+  "//buildCommand": "刻意**不调用 Node**。站点的 Hugo 内容（site/content/ 与 site/data/entries.json）由 tools/build-site.mjs 从 book/ 生成，但这两份生成物已提交进版本库——因为 EdgeOne 的构建环境只保证有 Hugo，其文档明确说 Hugo 项目检测「独立于 Node.js 生态」，Node 不一定可用。生成物提交后，Hugo 单独就能构建（实测 344 页、canonical 正确）。baseURL 必须固定为最终访问地址：canonical 与 Open Graph 都按它输出绝对地址。",
+  "buildCommand": "cd site && hugo --minify --baseURL https://workersledger.cn/",
+
+  "//outputDirectory": "相对仓库根的输出目录。在 site/ 下构建，所以产物落在 site/public。",
+  "outputDirectory": "site/public",
+
+  "//verification": "EdgeOne 这里只负责把站点构建出来。完整的校验链（生成哨兵与生成物同步检查、全仓库脱敏、渲染断言 116 项）在 GitHub Actions 的 verify.yml 与 pages.yml 里跑，不需要 Node 环境之外的额外条件。"
+}
