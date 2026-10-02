@@ -50,12 +50,19 @@ const REQUIRED_FIELDS = [
   '备注',
 ]
 
-/** 三套独立标注的取值白名单 */
+/** 三套独立标注的取值白名单。
+ * 「无明文依据」是一个正式取值，不是占位符：它表示这一问题确实存在、但找不到
+ * 可援引的明文条文。条目规范还规定它与主张强度强制联动——详见下方 CANNOT_CLAIM。 */
 const ENUMS = {
-  效力位阶: ['法律', '行政法规', '部门规章', '地方性法规', '司法解释', '规范性文件', '地方口径'],
+  效力位阶: ['法律', '行政法规', '部门规章', '地方性法规', '司法解释', '规范性文件', '地方口径', '无明文依据'],
   主张强度: ['可主张', '可推定', '倡导性'],
   举证难度: ['易', '中', '难'],
 }
+
+/** 效力位阶取「无明文依据」时，主张强度只能是「倡导性」。没有可援引的条文，
+ * 就没有可强制执行的请求权，标成可主张或可推定都是虚高。 */
+const NO_LEGAL_BASIS = '无明文依据'
+const NO_BASIS_ALLOWED_CLAIM = ['倡导性']
 
 /** 效力位阶允许多值并列（正文里用「 + 」连接，规范白名单各项全收） */
 const MULTI_VALUE_FIELDS = ['效力位阶']
@@ -381,6 +388,17 @@ function checkEntry(entry, issues, ctx) {
   const 举证 = enumTokens(val('举证难度'), false)[0] || ''
   const 备注 = val('备注')
 
+  // 效力位阶「无明文依据」与主张强度强制联动（条目规范「效力位阶只有八种取值」一节）
+  const 效力位阶值 = val('效力位阶')
+  if (效力位阶值.includes(NO_LEGAL_BASIS)) {
+    if (!NO_BASIS_ALLOWED_CLAIM.includes(主张)) {
+      issues.error(
+        where,
+        `「效力位阶」为「${NO_LEGAL_BASIS}」时，主张强度只能是「倡导性」，当前为「${主张 || '(空)'}」——没有可援引的条文就没有可强制执行的请求权，标成可主张或可推定是虚高`,
+      )
+    }
+  }
+
   // 主张强度「可推定」必须在备注写明不确定点与本地口径查询渠道
   if (主张 === '可推定') {
     if (!LOCAL_CHANNEL_WORDS.some((w) => 备注.includes(w))) {
@@ -430,9 +448,16 @@ function checkEntry(entry, issues, ctx) {
       // 这种做法可以接受，但必须交叉核查「依据」所列法规确实在信源表里登记了，
       // 否则「每条依据都能追到官方一手源」这个承诺就断了。
       const 指向信源表 = /法规清单|信源表|sources[\\/]/.test(来源)
+      // 「无明文依据」的条目按定义就没有可引用的官方链接，来源栏改为交代尝试路径。
+      // 但必须真的交代了：短短几个字糊过去不算。
+      const 无依据条目 = 效力位阶值.includes(NO_LEGAL_BASIS)
       if (来源.includes(PENDING_MARK)) {
         未定稿字段.push('来源')
         issues.warn(where, '未定稿：来源标为「待核实」，没有官方一手链接（AGENTS.md 底线一允许这样做，但未定稿条目不应对外发布）', '未定稿')
+      } else if (无依据条目) {
+        if (cleanValue(来源).length < 15) {
+          issues.error(where, `「效力位阶」为「${NO_LEGAL_BASIS}」，来源栏可以不给链接，但必须写明尝试过哪些检索路径、结果如何；当前内容过短，等于没交代`)
+        }
       } else if (!指向信源表) {
         issues.error(where, '「来源」栏没有任何链接（规范要求给出官方全文链接）')
       } else if (!ctx.registry.exists) {
