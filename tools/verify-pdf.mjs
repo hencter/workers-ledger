@@ -12,7 +12,7 @@
 //     --print-html <路径>  合成后的打印源 HTML，用来证明「DOM 里有、PDF 里没有」
 //     --expect-title <串>  期望的 PDF /Title（默认「劳动者的账本」）
 //     --expect-author <串> 期望的 PDF /Author（默认「亦幸和幸知」）
-//     --link-base <网址>   期望站内链接指向的发布地址（默认 https://hencter.github.io/workers-ledger/）
+//     --link-base <网址>   期望站内链接指向的发布地址（默认取 site.config.json 的 publishUrl）
 //     --section <节号>     只核实某一节（单节导出用；标题/正文/抽查都按该节过滤）
 //     --min-pages <N>      期望的最少页数（默认 100；单节导出时传小一点）
 //     --browser <路径|命令> 截图用的浏览器（默认自动探测；也可用 WRC_PDF_BROWSER）
@@ -35,10 +35,21 @@ if (!args.length || args.includes('--help') || args.includes('-h')) {
   process.exit(args.length ? 0 : 2)
 }
 const pdfPath = args[0]
+
+/** 期望的发布地址读仓库根 site.config.json 的 publishUrl，与 build-pdf.mjs 同源。
+ * 两边各写一份的话，换域名时容易只改一处，导致「链接基准」这条断言误报。 */
+const CONFIG_PUBLISH_URL = (() => {
+  try {
+    const cfg = JSON.parse(readFileSync(join(resolve(import.meta.dirname, '..'), 'site.config.json'), 'utf8'))
+    if (cfg.publishUrl) return cfg.publishUrl
+  } catch { /* 读不到时退回兜底 */ }
+  return 'https://hencter.github.io/workers-ledger/'
+})()
+
 const opt = {
   site: 'site/public', printHtml: null,
   expectTitle: '劳动者的账本', expectAuthor: '亦幸和幸知',
-  linkBase: 'https://hencter.github.io/workers-ledger/',
+  linkBase: CONFIG_PUBLISH_URL,
   browser: process.env.WRC_PDF_BROWSER || process.env.CHROME_PATH || null,
   noSandbox: /^(1|true|yes)$/i.test(process.env.WRC_PDF_NO_SANDBOX || ''),
   shots: null, shotPages: [1, 2, 3], json: false, section: null, minPages: 100,

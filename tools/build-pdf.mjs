@@ -35,7 +35,16 @@ const ROOT = resolve(HERE, '..')
 
 const BOOK_TITLE = '劳动者的账本'
 const BOOK_AUTHOR = '亦幸和幸知'
-const BOOK_PUBLIC_BASE = 'https://hencter.github.io/workers-ledger/'
+
+/** 发布地址读仓库根的 site.config.json 的 publishUrl（PDF 里链接的基准）。
+ * 换域名只改那一个文件，或用 --link-base 覆盖。 */
+const BOOK_PUBLIC_BASE = (() => {
+  try {
+    const cfg = JSON.parse(readFileSync(join(ROOT, 'site.config.json'), 'utf8'))
+    if (cfg.publishUrl) return cfg.publishUrl
+  } catch { /* 读不到时退回默认，下面这行是兜底 */ }
+  return 'https://hencter.github.io/workers-ledger/'
+})()
 
 // 无头浏览器候选：Windows 常见安装位置 + Linux/macOS。可用 --browser 或环境变量覆盖。
 const BROWSER_CANDIDATES = [
@@ -63,7 +72,7 @@ const HELP = `把站点正文导出为 PDF 电子书（零第三方依赖，只�
                        默认输出 dist/劳动者的账本-第NN节-<节名>.pdf
   --site <目录>        站点产物目录（默认 site/public）
   --base <网址>        改用该已部署站点作为内容来源（如
-                       https://hencter.github.io/workers-ledger/）；不给则用本地产物目录
+                       site.config.json 的 publishUrl）；不给则用本地产物目录
   --browser <路径|命令> 浏览器可执行文件；也可用环境变量 WRC_PDF_BROWSER 或 CHROME_PATH。
                        给命令名（如 google-chrome）时按 PATH 查找——CI 上这么用
   --no-sandbox         给浏览器加 --no-sandbox --disable-dev-shm-usage（容器/CI 上常需要）

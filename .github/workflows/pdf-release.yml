@@ -84,11 +84,20 @@ jobs:
           HUGO_ENVIRONMENT: production
         run: |
           set -euo pipefail
-          reponame="${GITHUB_REPOSITORY#*/}"
-          if [ "$reponame" = "${GITHUB_REPOSITORY_OWNER}.github.io" ]; then
-            base="https://${GITHUB_REPOSITORY_OWNER}.github.io/"
+          # 发布地址优先取 site.config.json 的 publishUrl（绑了自定义域名后，
+          # 按仓库名推导会得到 hencter.github.io/workers-ledger/，与自定义域名
+          # 冲突，canonical 会指向另一个地址）。该文件不存在时才退回推导。
+          if [ -f site.config.json ]; then
+            base=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('site.config.json','utf8')).publishUrl)")
+            echo "发布地址取自 site.config.json"
           else
-            base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${reponame}/"
+            reponame="${GITHUB_REPOSITORY#*/}"
+            if [ "$reponame" = "${GITHUB_REPOSITORY_OWNER}.github.io" ]; then
+              base="https://${GITHUB_REPOSITORY_OWNER}.github.io/"
+            else
+              base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${reponame}/"
+            fi
+            echo "site.config.json 不存在，按仓库名推导"
           fi
           echo "站点绝对地址：$base"
           echo "SITE_BASE=$base" >> "$GITHUB_ENV"

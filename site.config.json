@@ -1,0 +1,11 @@
+{
+  "//": "发布配置的唯一真相源。改域名只改这里，三个脚本与文档都读它。",
+  "//domain": "裸域名。GitHub Pages 自定义域名要求 CNAME 文件内容与它完全一致。",
+  "domain": "workersledger.cn",
+  "//publishUrl": "对外访问地址（canonical、Open Graph、PDF 内链接都按它生成）。裸域名用 https 加斜杠结尾。",
+  "publishUrl": "https://workersledger.cn/",
+  "//repo": "托管仓库。GitHub Pages 的 A 记录要指向该托管的四个地址。",
+  "repo": "hencter/workers-ledger",
+  "//note": "备案：.cn 域名注册不需要备案；不备案的前提是主机在境外。本项目托管在 GitHub Pages（境外），故不涉及备案。若将来迁到中国大陆服务器或国内 CDN，必须备案，届时这里要跟着改。",
+  "hosting": "github-pages"
+}

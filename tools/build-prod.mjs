@@ -18,11 +18,25 @@ import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const SITE = resolve(HERE, '..', 'site')
+const ROOT = resolve(HERE, '..')
+const SITE = join(ROOT, 'site')
 const PUBLIC = join(SITE, 'public')
-// 默认发布地址。仓库改名后这里是 workers-ledger，别再改回旧名——
-// canonical 与 Open Graph 都按它输出绝对地址，写错会让所有页面的规范地址指向 404。
-const BASE = process.env.WRC_BASE_URL || 'https://hencter.github.io/workers-ledger/'
+
+/** 发布地址从仓库根的 site.config.json 读，不再在各脚本里各写一份。
+ * 换域名只改那一个文件（或用 WRC_BASE_URL 临时覆盖）——此前域名散落在
+ * build-prod / build-pdf / verify-pdf 三个脚本里，改名时漏掉一处就会让
+ * canonical 指向 404，已经发生过一次。 */
+function publishUrl() {
+  if (process.env.WRC_BASE_URL) return process.env.WRC_BASE_URL
+  try {
+    const cfg = JSON.parse(readFileSync(join(ROOT, 'site.config.json'), 'utf8'))
+    if (cfg.publishUrl) return cfg.publishUrl
+  } catch (e) {
+    console.error(`[警告] 读不到 site.config.json（${e.message}），退回默认发布地址`)
+  }
+  return 'https://hencter.github.io/workers-ledger/'
+}
+const BASE = publishUrl()
 
 const fail = (msg) => { console.error(`[失败] ${msg}`); process.exit(1) }
 

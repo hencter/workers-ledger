@@ -2,6 +2,8 @@
 
 **法律允许什么，是一回事；拿不拿得到，是另一回事。**
 
+**在线读：[workersledger.cn](https://workersledger.cn/)** · 离线单文件：[下载 index.html](index.html) · PDF：[下载（709 页）](https://github.com/hencter/workers-ledger/releases/download/pdf-latest/%E5%8A%B3%E5%8A%A8%E8%80%85%E7%9A%84%E8%B4%A6%E6%9C%AC.pdf)
+
 中国大陆劳动权益与合规的循证指南。这本书记的是后一件事：一条权利要真正落到手里，需要什么证据、受什么时效约束、在哪些地方口径不一致、主张强度到底是「可主张」「可推定」还是「倡导性」。
 
 面向在中国大陆工作的人——**刚要参加校招和刚毕业的**、在职的、要离职的、被欠薪的、受了工伤的、正在准备签合同的。法律与政策按中国大陆现行规定写，每条的核对日期都标出来，因为制度会变。
@@ -150,6 +152,19 @@ cd site && hugo server -D --renderToMemory   # 本地预览（注意 --renderToM
 | [tools/build-offline.mjs](tools/build-offline.mjs) | 生成单文件离线检索页 |
 
 站点侧另有一个 106 项断言的渲染校验：[site/checks/render-check.mjs](site/checks/render-check.mjs)，用真实产物对账字段渲染、颜色类名、分布统计与链接可达性。
+
+## 发布与域名
+
+发布配置只有一个真相源：[site.config.json](site.config.json)。**换域名只改那一个文件**——`tools/build-prod.mjs`、`tools/build-pdf.mjs`、`tools/verify-pdf.mjs` 与两个 GitHub Actions 工作流都读它。此前域名散落在三个脚本里各写一份，改一次漏一处就会让所有页面的 canonical 指向 404，已经发生过一次。
+
+```
+域名        workersledger.cn（裸域名）
+托管        GitHub Pages（境外）
+Pages 下发  site/static/CNAME 内容必须与域名完全一致
+DNS         裸域名需 4 条 A 记录指向 GitHub Pages 地址，解析由域名持有者配置
+```
+
+**关于备案**：`.cn` 域名**注册不需要备案**，备案只在两处被要求——用中国大陆境内服务器托管、或用国内 CDN。本项目托管在境外，所以不涉及备案。**代价是主机必须留在境外**：一旦迁到大陆服务器或国内 CDN，就绕不开备案。
 
 ## 边界
 
