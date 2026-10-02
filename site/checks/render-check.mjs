@@ -204,6 +204,37 @@ checkTrue('条目页有可点的来源链接', entryHtml.includes('src-link'))
 checkTrue('条目页有主张强度颜色类名', /badge--claim-(strong|mid|weak)/.test(entryHtml))
 checkTrue('条目页有举证难度颜色类名', /badge--proof-(easy|mid|hard)/.test(entryHtml))
 
+/* 结构化数据必须是裸 JSON 对象。
+   Hugo 在 <script> 上下文里按 JS 字符串转义，只写 jsonify 会得到
+   "{\"@type\":...}" 这种带引号的字符串，消费方读不到 @type，这块数据等于无效；
+   模板里对应的写法是 {{ $ld | jsonify | safeJS }}。 */
+const ldOf = (html) => {
+  const m = /<script[^>]*type=(?:"application\/ld\+json"|application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/.exec(html)
+  return m ? m[1].trim() : ''
+}
+const homeLd = ldOf(homeHtml)
+checkTrue('首页有 JSON-LD', Boolean(homeLd))
+checkTrue('首页 JSON-LD 是裸对象（不是被转义的字符串）', homeLd.startsWith('{'))
+let homeLdType = '解析失败'
+try { homeLdType = JSON.parse(homeLd)['@type'] } catch (err) { homeLdType = `解析失败：${err.message}` }
+check('首页 JSON-LD 可解析且 @type', homeLdType, 'WebSite')
+
+const entryLd = ldOf(entryHtml)
+checkTrue('条目页 JSON-LD 是裸对象', entryLd.startsWith('{'))
+let entryLdType = '解析失败'
+let entryLdOk = false
+try {
+  const parsed = JSON.parse(entryLd)
+  entryLdType = parsed['@type']
+  entryLdOk = typeof parsed.headline === 'string' && parsed.isPartOf && parsed.isPartOf['@type'] === 'Book' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.datePublished)
+} catch (err) { entryLdType = `解析失败：${err.message}` }
+check('条目页 JSON-LD @type', entryLdType, 'Article')
+checkTrue('条目页 JSON-LD 含 headline / isPartOf / datePublished', entryLdOk)
+
+/* 侧栏条目数必须等于索引条数：不要用 site.RegularPages，
+   那会把作者以后新增的普通页（如 about.md）也算成条目。 */
+check('侧栏「共 N 条」与索引条数一致', Number((/共\s*(\d+)\s*条/.exec(homeHtml) || [, 'NaN'])[1]), entries.length)
+
 // —— E. 硬约束与离线可用 ——
 const hardRuleHits = []
 const externalResourceTags = []

@@ -45,6 +45,18 @@ skills/        照书回答的 AI skill
 
 tools/ 下全部零依赖，只用 Node 24 内置模块。不引 npm 包，不建 package.json。改完用故意造错的样例验证报错路径真的会触发，验证结果写进 `docs/核实记录/`。
 
+## 构建站点时（一条已踩过的坑）
+
+**`site/public/` 只能有一个写者。** `hugo server -D` 会把开发版产物写进同一个 `public/`——带 livereload 脚本、`localhost` 的 canonical、`noindex` 标记、未指纹化的样式。本项目验收时撞过一次：生产构建刚跑完，一个仍在后台的 server 把它覆盖成开发版，结果 `site/checks/render-check.mjs` 三项断言变红（样式不是本站指纹文件、脚本不是本站指纹文件、robots 不是 `index, follow`），**看起来像代码缺陷，实际是并发写者**。
+
+所以：
+
+- **构建 `public/` 一律走 `node tools/build-prod.mjs`**。它会在动手前检查有没有 server 在跑，拒绝在有并发写者时构建；构建完再校验产物是不是生产形态（6 项断言，含 JSON-LD 必须是 JSON 对象而非字符串）。
+- **本地预览用 `hugo server -D --renderToMemory`**，它不写 `public/`，可以与验收构建共存。
+- 其余所有构建（试构建、探针）一律输出到 `.tmp-*` 临时目录，那些目录已在 `.gitignore` 里。
+
+验证顺序固定为：`build-site.mjs`（生成内容）→ `check-site.mjs`（哨兵对账）→ `build-prod.mjs`（生产构建）→ `site/checks/render-check.mjs`（106 项渲染断言）。四步全绿才算站点这一侧通过。
+
 ## 加条目时的自检
 
 - 这一条的适用情形写得够具体吗（不是「一般来说」）？

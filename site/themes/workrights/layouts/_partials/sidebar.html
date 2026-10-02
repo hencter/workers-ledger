@@ -3,6 +3,12 @@
 {{- $page := . -}}
 {{- $current := .CurrentSection -}}
 {{- $sections := site.Home.Sections.ByWeight -}}
+{{- /* 条目数按节累加，不用 site.RegularPages：后者会把任何普通页算进来
+       （比如作者以后加一篇 about.md，站点上就会写着比正文多一条）。 */ -}}
+{{- $entryCount := 0 -}}
+{{- range $sections -}}
+  {{- $entryCount = add $entryCount (len .Pages) -}}
+{{- end -}}
 <div class="nav-head"><span>全书目录</span><span>{{ len $sections }} 节</span></div>
 <nav aria-label="章节导航">
   <ul class="nav-list">
@@ -30,6 +36,6 @@
   </ul>
 </nav>
 <div class="sidebar__foot">
-  <p>共 {{ len site.RegularPages }} 条，分 {{ len $sections }} 节。<br>条目按其主张强度在左侧标点：绿=可主张，琥珀=可推定，灰=倡导性。</p>
+  <p>共 {{ $entryCount }} 条，分 {{ len $sections }} 节。<br>条目按其主张强度在左侧标点：绿=可主张，琥珀=可推定，灰=倡导性。</p>
   <p><a href="{{ site.Home.RelPermalink }}#search">检索与筛选 →</a></p>
 </div>
