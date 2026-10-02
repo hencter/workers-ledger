@@ -13,7 +13,7 @@
 // site/public/，其余一律写临时目录。
 
 import { spawnSync } from 'node:child_process'
-import { readFileSync, existsSync, rmSync } from 'node:fs'
+import { readFileSync, existsSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -72,7 +72,32 @@ const r = spawnSync('hugo', args, {
 if (r.error) fail(`无法执行 hugo：${r.error.message}`)
 if (r.status !== 0) fail(`hugo 构建失败，退出码 ${r.status}`)
 
-// 三、校验产物形态。这三项正是被开发服务器覆盖时会最先红掉的。
+// 三、修正 robots.txt 里的 sitemap 地址。
+//
+// 静态文件里没法知道部署域名，`site/static/robots.txt` 只能写占位符 `__SITEMAP__`；
+// 而 robots.txt **不支持相对路径**，必须给绝对地址——不替换的话爬虫看到的是一行无效声明，
+// 等于没声明站点地图。sitemap 由 Hugo 生成在 public/sitemap.xml，所以这一步必须
+// 在生产构建**之后**做（这也是它放在本脚本而不是 build-site.mjs 的原因：public/ 每次重建）。
+{
+  const robotsPath = join(PUBLIC, 'robots.txt')
+  const sitemapPath = join(PUBLIC, 'sitemap.xml')
+  if (!existsSync(robotsPath)) {
+    fail('构建后找不到 public/robots.txt（site/static/robots.txt 应在构建时被复制过来）')
+  }
+  const robots = readFileSync(robotsPath, 'utf8')
+  if (robots.includes('__SITEMAP__')) {
+    if (!existsSync(sitemapPath)) fail('robots.txt 需要 sitemap 地址，但构建后没有 public/sitemap.xml')
+    const sitemapUrl = `${BASE.replace(/\/$/, '')}/sitemap.xml`
+    writeFileSync(robotsPath, robots.replaceAll('__SITEMAP__', sitemapUrl), 'utf8')
+    console.log(`robots.txt：sitemap 地址已补为 ${sitemapUrl}`)
+  } else if (!/^Sitemap:\s*https?:\/\//m.test(robots)) {
+    fail('robots.txt 里既没有 __SITEMAP__ 占位符，也没有绝对地址的 Sitemap 行')
+  } else {
+    console.log('robots.txt：sitemap 地址已是绝对地址')
+  }
+}
+
+// 四、校验产物形态。这三项正是被开发服务器覆盖时会最先红掉的。
 const home = join(PUBLIC, 'index.html')
 if (!existsSync(home)) fail(`构建后找不到 ${home}`)
 const html = readFileSync(home, 'utf8')

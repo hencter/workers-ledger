@@ -226,6 +226,55 @@ function sectionIndex(section, entries) {
   ].join('\n')
 }
 
+/** docs/ 下要同步成站点页面的文档。
+ *
+ *  为什么由生成脚本产出、而不是手放进 site/content/：site/content/ 是本脚本掌管的
+ *  目录，每次生成整体重建，手放的文件会被删掉（本仓库原有 site/archetypes/default.md
+ *  失效就是这个原因）。单向往生成：docs/<文件>.md → site/content/<目录>/_index.md。
+ *
+ *  url 显式写死，避免依赖 slug 转换规则；description 进 meta description 与 og。 */
+const DOC_PAGES = [
+  {
+    源: '求助与反馈渠道.md',
+    目录: '求助渠道',
+    标题: '求助与反馈渠道',
+    url: '求助渠道/',
+    描述: '12333／12348／12329／12345 等热线、官方入口，以及怎么找到你所在区县的劳动人事争议仲裁委员会、劳动保障监察机构与社保经办机构。',
+    weight: 98,
+  },
+  {
+    源: '授权与使用.md',
+    目录: '授权',
+    标题: '授权与使用',
+    url: '授权/',
+    描述: '本书内容采用 CC BY-NC-SA 4.0（署名—非商业性使用—相同方式共享），代码采用 MIT；法律原文不受著作权保护。这里说明你可以怎么用、必须怎么署名、想商用怎么办。',
+    weight: 99,
+  },
+]
+
+/** 把一个 docs/ 下的 markdown 转成站点页面内容 */
+function docPage(def) {
+  const src = join(ROOT, 'docs', def.源)
+  if (!existsSync(src)) return null
+  const raw = readFileSync(src, 'utf8').replace(/\r\n/g, '\n')
+  // 去掉文件首个一级标题（页面标题由 front matter 提供，避免重复）
+  const body = raw.replace(/^#\s+.*\n/, '').trim()
+  const front = [
+    '---',
+    `title: ${JSON.stringify(def.标题)}`,
+    `linkTitle: ${JSON.stringify(def.标题)}`,
+    `url: ${JSON.stringify(def.url)}`,
+    `weight: ${def.weight}`,
+    `description: ${JSON.stringify(def.描述)}`,
+    'params:',
+    `  来源文件: ${JSON.stringify(`docs/${def.源}`)}`,
+    '---',
+    '',
+    '',
+  ].join('\n')
+  return { dir: join(CONTENT_DIR, def.目录 || def.标题), file: '_index.md', content: front + body + '\n' }
+}
+
 function main() {
   if (!existsSync(BOOK_DIR)) {
     console.error(`[环境错误] 找不到正文目录：${BOOK_DIR}`)
@@ -300,6 +349,25 @@ function main() {
   // 生成。整个 content/ 由本脚本掌管，先清空避免残留旧页面。
   if (existsSync(CONTENT_DIR)) rmSync(CONTENT_DIR, { recursive: true, force: true })
   mkdirSync(DATA_DIR, { recursive: true })
+
+  // 把发布配置（site.config.json）转成 Hugo data，供模板读。
+  //
+  // 为什么不直接在 hugo.toml 里也写一份仓库地址：那是**第二个真相源**，
+  // 改一个忘一个的那天，页脚链接会指向已废弃的仓库而看起来完全正常。
+  // 也不用 Hugo 的 resources.Get——实测在 site/ 下读不到仓库根的那个文件。
+  // 生成一份 data 最稳：Hugo 读得到，来源仍只有 site.config.json 一份。
+  const cfgPath = join(ROOT, 'site.config.json')
+  if (existsSync(cfgPath)) {
+    const raw = JSON.parse(readFileSync(cfgPath, 'utf8'))
+    // 去掉以 // 开头的注释键，只留真配置，免得注释被当成数据渲染出去
+    const cfg = {}
+    for (const [k, v] of Object.entries(raw)) if (!k.startsWith('//')) cfg[k] = v
+    if (cfg.repo) cfg.repoURL = `https://github.com/${cfg.repo}`
+    writeFileSync(join(DATA_DIR, 'site.json'), JSON.stringify(cfg, null, 2) + '\n', 'utf8')
+  } else {
+    console.log('[警告] 未找到 site.config.json，页脚不会出现仓库链接')
+  }
+
   for (const o of out) {
     const dir = join(CONTENT_DIR, o.slug)
     mkdirSync(dir, { recursive: true })
@@ -314,6 +382,17 @@ function main() {
       ['---', 'title: 劳动权益与合规指南', 'description: 中国大陆劳动权益与合规的循证指南', '---', ''].join('\n'),
       'utf8',
     )
+  }
+  // docs/ 下的说明类文档 → 站点页面（渠道、授权等）
+  for (const def of DOC_PAGES) {
+    const page = docPage(def)
+    if (!page) {
+      console.log(`[警告] 未找到 docs/${def.源}，跳过「${def.标题}」页生成`)
+      continue
+    }
+    mkdirSync(page.dir, { recursive: true })
+    writeFileSync(join(page.dir, page.file), page.content, 'utf8')
+    console.log(`已生成文档页：site/content/${def.目录 || def.标题}/_index.md（来源 docs/${def.源}）`)
   }
   writeFileSync(
     join(DATA_DIR, 'entries.json'),
