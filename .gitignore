@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+Thumbs.db
+.obsidian/
+.vscode/
+.idea/
+
+# 核验过程中的临时抓取文件，不对外，也不进版本库
+.tmp-verify/
+.tmp-audit/
+.tmp/

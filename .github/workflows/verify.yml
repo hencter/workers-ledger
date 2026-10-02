@@ -1,0 +1,90 @@
+name: 校验
+
+# 三道独立防线，各跑各的：
+#   1. 条目结构校验 —— 字段完整性、字段名、枚举取值、编号连续、核对日期时效
+#   2. 来源时效与链接监控 —— 抓官方页面比对版本，只对「确定失效」和「版本不一致」判失败
+#   3. 脱敏扫描 —— 个人信息类硬命中即失败
+#
+# 任何一个 job 失败都不会阻塞其余 job 出结果（job 之间没有 needs 依赖，并行跑）。
+
+on:
+  push:
+  pull_request:
+  # 每周一 02:00 UTC（北京时间 10:00）全量跑一次来源时效，联网抓官方页面
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      full_network:
+        description: '来源时效 job 是否联网抓取官方页面（不定时触发时默认只校验注册表字段）'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  条目结构:
+    name: 条目结构校验
+    # 定时任务只跑来源时效，条目结构与脱敏扫描在 push / PR / 手动触发时跑
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 取出仓库内容
+        uses: actions/checkout@v4
+      - name: 准备 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 运行条目结构校验
+        run: node tools/check-items.mjs --check --summary "$GITHUB_STEP_SUMMARY"
+
+  来源时效:
+    name: 来源时效与链接监控
+    runs-on: ubuntu-latest
+    # 联网抓一批官方页面要慢得多，给足时间
+    timeout-minutes: 30
+    steps:
+      - name: 取出仓库内容
+        uses: actions/checkout@v4
+      - name: 准备 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # 说明：GitHub 托管 runner 在境外机房，gov.cn 系站点常挡境外 IP。
+      # 脚本已把超时、5xx、TLS 握手失败单列成「没连上」「握手不兼容」两档，不判失效，
+      # 所以境外 runner 上跑不会天天红；但要真正抓到「版本不一致」，
+      # 需要在能访问 gov.cn 的环境（自建 runner 或本地机器）上跑 --check。
+      - name: 运行来源时效与链接监控
+        env:
+          联网: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full_network) }}
+        run: |
+          if [ "$联网" = "true" ]; then
+            echo "模式：联网全量"
+            node tools/check-sources.mjs --check --summary "$GITHUB_STEP_SUMMARY"
+          else
+            echo "模式：离线（只校验注册表必填字段）"
+            node tools/check-sources.mjs --offline --check --summary "$GITHUB_STEP_SUMMARY"
+          fi
+
+  脱敏扫描:
+    name: 脱敏扫描
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 取出仓库内容
+        uses: actions/checkout@v4
+      - name: 准备 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # 用 --check：个人信息类硬命中即失败；「需语境档」只报待人工判断，不阻塞。
+      # 想把需语境档也变成门禁，加 --strict。
+      - name: 运行脱敏扫描
+        run: node tools/check-desensitize.mjs --check --summary "$GITHUB_STEP_SUMMARY"
