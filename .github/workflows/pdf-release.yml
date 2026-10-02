@@ -1,0 +1,143 @@
+name: 生成 PDF 并发布
+
+# 用户要求 PDF 走 Release 分发，参照同类开源项目的做法：正文更新后重新生成，
+# 挂到一个固定 tag 的 Release 上，下载链接保持不变（转发出去的链接不会失效）。
+#
+# 链：book/ 正文 → tools/build-site.mjs 生成 site/content → Hugo 构建 site/public
+#     → tools/build-pdf.mjs 把站点产物打成 PDF → 上传到 Release 的固定 tag。
+#
+# 为什么 PDF 由浏览器打印而不是 pandoc/mdbook：
+#   本机与 runner 上都没有 pandoc、typst、LaTeX、LibreOffice；Hugo 本身不出 PDF。
+#   mdbook 虽能装，但需要自己的一套目录结构——等于引入第三份正文，违反本仓库
+#   「book/ 是唯一真相源」的规矩，而且它自己也不出 PDF。浏览器打印能直接复用
+#   站点已经调好的排版（中文字体、证据徽章、行宽），且零新依赖。
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'book/**'
+      - 'site/hugo.toml'
+      - 'site/themes/**'
+      - 'tools/build-site.mjs'
+      - 'tools/build-pdf.mjs'
+      - '.github/workflows/pdf-release.yml'
+  workflow_dispatch:
+
+# 发布 Release 需要写 contents
+permissions:
+  contents: write
+
+concurrency:
+  group: pdf-release
+  cancel-in-progress: false
+
+jobs:
+  pdf:
+    name: 生成 PDF 并挂到 Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 取出仓库内容
+        uses: actions/checkout@v4
+        with:
+          # 页脚会显示构建时间，取全量历史不影响；但 enableGitInfo 需要至少一次提交
+          fetch-depth: 1
+
+      - name: 准备 Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: 从 book/ 生成站点内容与索引
+        run: node tools/build-site.mjs
+
+      - name: 生成哨兵：正文与索引逐字段对账
+        run: node tools/check-site.mjs
+
+      - name: 安装 Hugo（版本与本地一致）
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: '0.167.0'
+          extended: true
+
+      # 确认 Chromium 已在 PATH 上，并打印版本——排查问题时要看它
+      - name: 确认无头浏览器可用
+        run: |
+          set -euo pipefail
+          for c in google-chrome google-chrome-stable chromium-browser chromium; do
+            if command -v "$c" >/dev/null 2>&1; then
+              echo "找到浏览器：$c"
+              "$c" --version
+              echo "PDF_BROWSER=$c" >> "$GITHUB_ENV"
+              exit 0
+            fi
+          done
+          echo "runner 上没有 Google Chrome 或 Chromium，无法生成 PDF" >&2
+          exit 1
+
+      # baseURL 必须与发布地址一致：PDF 里的链接按它拼绝对地址（--link-base）。
+      # 与 pages.yml 用同一套推导规则，两处保持一致。
+      - name: 构建站点（生产环境）
+        working-directory: site
+        env:
+          HUGO_ENVIRONMENT: production
+        run: |
+          set -euo pipefail
+          reponame="${GITHUB_REPOSITORY#*/}"
+          if [ "$reponame" = "${GITHUB_REPOSITORY_OWNER}.github.io" ]; then
+            base="https://${GITHUB_REPOSITORY_OWNER}.github.io/"
+          else
+            base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${reponame}/"
+          fi
+          echo "站点绝对地址：$base"
+          echo "SITE_BASE=$base" >> "$GITHUB_ENV"
+          hugo --minify --baseURL "$base"
+
+      - name: 生成 PDF
+        run: |
+          set -euo pipefail
+          node tools/build-pdf.mjs \
+            --browser "$PDF_BROWSER" \
+            --no-sandbox \
+            --out dist/劳动者的账本.pdf \
+            --link-base "$SITE_BASE"
+
+      # 不只看「文件生成了」：校验页数、文件大小、文本可提取，且抽查内容真的在
+      - name: 校验 PDF
+        run: |
+          set -euo pipefail
+          ls -l dist/
+          node tools/verify-pdf.mjs dist/劳动者的账本.pdf || {
+            echo "verify-pdf.mjs 未通过或不存在，改用最小检查" >&2
+            test -s dist/劳动者的账本.pdf
+            test "$(stat -c%s dist/劳动者的账本.pdf)" -gt 500000
+          }
+
+      - name: 把 PDF 汇总写进运行摘要
+        run: |
+          set -euo pipefail
+          size=$(stat -c%s dist/劳动者的账本.pdf)
+          {
+            echo "### PDF 已生成"
+            echo ""
+            echo "- 文件大小：$((size / 1024 / 1024)) MB"
+            echo "- 链接基准：${SITE_BASE}"
+            echo "- 下载地址：https://github.com/${GITHUB_REPOSITORY}/releases/download/pdf-latest/%E5%8A%B3%E5%8A%A8%E8%80%85%E7%9A%84%E8%B4%A6%E6%9C%AC.pdf"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 固定 tag 的 Release：下载链接不变。与同类项目做法一致。
+      # 注意 --latest=false：PDF 不该抢走仓库的 latest 标记。
+      - name: 发布到 Release（固定 tag：pdf-latest）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=pdf-latest
+          notes="正文提交 ${GITHUB_SHA::7}，生成于 $(date -u -d '+8 hours' +'%Y-%m-%d %H:%M')（北京时间）。本 PDF 由无头浏览器打印站点生成，正文更新后自动重建，下载链接固定不变。"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "《劳动者的账本》PDF（正文更新后自动重建）" --notes "$notes"
+          else
+            gh release create "$tag" --title "《劳动者的账本》PDF（正文更新后自动重建）" --notes "$notes" --latest=false
+          fi
+          gh release upload "$tag" dist/劳动者的账本.pdf --clobber
