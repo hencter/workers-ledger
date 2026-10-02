@@ -1,8 +1,10 @@
 # 用 AI 照这本书回答
 
+这本书是《劳动者的账本》。
+
 装了这个 skill，AI 助手回答劳动权益问题时会**先查这本书的条目，再作答**，并注明出自第几节第几条。查不到就说查不到，不凭记忆编法条号、金额和期限。
 
-> 下文用 `<owner>` 代指托管账号，用 `work-rights-cn` 代指仓库名。**发布前请把这两处替换成实际值**，否则克隆命令会失败。
+> 下文用 `<owner>` 代指托管账号，用 `workers-ledger` 代指仓库名。**发布前请把这两处替换成实际值**，否则克隆命令会失败。
 
 ## 它和普通对话有什么不同
 
@@ -21,16 +23,16 @@
 
 ```bash
 # 克隆到一个固定位置
-git clone https://github.com/<owner>/work-rights-cn.git ~/.claude/skills/work-rights-cn
+git clone https://github.com/<owner>/workers-ledger.git ~/.claude/skills/workers-ledger
 ```
 
 或者只把这个 skill 目录取出来：
 
 ```bash
 mkdir -p ~/.claude/skills
-git clone --depth 1 --filter=blob:none --sparse https://github.com/<owner>/work-rights-cn.git /tmp/wrcn
-cd /tmp/wrcn && git sparse-checkout set skills/work-rights-cn
-cp -r skills/work-rights-cn ~/.claude/skills/
+git clone --depth 1 --filter=blob:none --sparse https://github.com/<owner>/workers-ledger.git /tmp/wrcn
+cd /tmp/wrcn && git sparse-checkout set skills/workers-ledger
+cp -r skills/workers-ledger ~/.claude/skills/
 ```
 
 **Windows** 对应路径是 `%USERPROFILE%\.claude\skills\`。
@@ -42,7 +44,7 @@ cp -r skills/work-rights-cn ~/.claude/skills/
 把 `SKILL.md` 放到 Codex 读取技能的位置（各版本目录约定不同），或直接把这段加进你的项目说明文件：
 
 ```
-回答劳动权益问题时，先读 skills/work-rights-cn/SKILL.md 并按其步骤执行：
+回答劳动权益问题时，先读 skills/workers-ledger/SKILL.md 并按其步骤执行：
 先查 book/ 下的条目，整条读完再答，每条注明出自第几节第几条；
 主张强度、举证难度、时效起算点照抄条目；查不到就说查不到。
 ```

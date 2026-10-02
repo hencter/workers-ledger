@@ -7,7 +7,7 @@
 
 # 本地预览用的默认地址；发布时由 CI 用 --baseURL 覆盖成真实地址
 baseURL = 'https://example.org/'
-title = '劳动权益与合规指南'
+title = '劳动者的账本'
 
 locale = 'zh-CN'
 timeZone = 'Asia/Shanghai'

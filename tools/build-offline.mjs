@@ -50,7 +50,7 @@ const html = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
-<title>劳动权益与合规指南 · 离线检索</title>
+<title>劳动者的账本 · 离线检索</title>
 <meta name="description" content="中国大陆劳动权益与合规的循证指南，单文件离线检索版。">
 <style>
 :root{
@@ -129,7 +129,7 @@ footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);color:v
 <body>
 <div class="wrap">
 <header>
-  <h1>劳动权益与合规指南</h1>
+  <h1>劳动者的账本</h1>
   <p>法律允许什么，是一回事；拿不拿得到，是另一回事。本页为单文件离线版，断网可用，双击即开。</p>
 </header>
 
