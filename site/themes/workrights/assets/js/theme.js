@@ -2,7 +2,7 @@
    CSS 侧：@media (prefers-color-scheme: dark) 是默认；
    html[data-theme="light"|"dark"] 是手动覆盖。 */
 
-const KEY = 'workrights-theme'
+const KEY = 'ledger-theme'
 
 function read() {
   try {
