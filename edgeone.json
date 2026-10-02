@@ -1,5 +1,4 @@
 {
-  "hugoVersion": "0.167.0",
   "buildCommand": "hugo --source site --minify --baseURL https://workersledger.cn/",
   "outputDirectory": "site/public"
 }
