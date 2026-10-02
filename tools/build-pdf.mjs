@@ -62,6 +62,8 @@ const HELP = `把站点正文导出为 PDF 电子书（零第三方依赖，只�
   --only <节号>        只导出某一节（如 2 / 02 / 第2节），
                        默认输出 dist/劳动者的账本-第NN节-<节名>.pdf
   --site <目录>        站点产物目录（默认 site/public）
+  --base <网址>        改用该已部署站点作为内容来源（如
+                       https://hencter.github.io/workers-ledger/）；不给则用本地产物目录
   --browser <路径|命令> 浏览器可执行文件；也可用环境变量 WRC_PDF_BROWSER 或 CHROME_PATH。
                        给命令名（如 google-chrome）时按 PATH 查找——CI 上这么用
   --no-sandbox         给浏览器加 --no-sandbox --disable-dev-shm-usage（容器/CI 上常需要）
@@ -85,9 +87,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 function parseArgs(argv) {
   const opts = {
-    out: null, only: null, site: join(ROOT, 'site', 'public'), browser: null,
+    out: null, only: null, site: join(ROOT, 'site', 'public'), base: null, browser: null,
     noSandbox: /^(1|true|yes)$/i.test(process.env.WRC_PDF_NO_SANDBOX || ''),
-    linkBase: BOOK_PUBLIC_BASE, keepHtml: null, pageNumbers: true, help: false,
+    linkBase: BOOK_PUBLIC_BASE, linkBaseExplicit: false,
+    keepHtml: null, pageNumbers: true, help: false,
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
@@ -95,9 +98,10 @@ function parseArgs(argv) {
     else if (a === '--out') opts.out = argv[++i]
     else if (a === '--only') opts.only = argv[++i]
     else if (a === '--site') opts.site = resolve(argv[++i])
+    else if (a === '--base') opts.base = argv[++i]
     else if (a === '--browser') opts.browser = argv[++i]
     else if (a === '--no-sandbox') opts.noSandbox = true
-    else if (a === '--link-base') opts.linkBase = argv[++i]
+    else if (a === '--link-base') { opts.linkBase = argv[++i]; opts.linkBaseExplicit = true }
     else if (a === '--keep-html') opts.keepHtml = argv[++i]
     else if (a === '--no-page-numbers') opts.pageNumbers = false
     else throw new Error(`未知参数：${a}（用 --help 看用法）`)
@@ -493,7 +497,11 @@ async function main() {
   if (opts.help) { process.stdout.write(HELP); return 0 }
 
   const browser = resolveBrowser(opts.browser)
-  const reader = remotePageReaderSafe(opts)
+  // 来源：默认本地产物目录；给了 --base 就改从已部署站点取
+  const reader = opts.base ? remotePageReader(opts.base) : localPageReader(opts.site)
+  const remoteBase = reader.kind === 'remote' ? reader.base : null
+  // 链接基址：显式给了就听 --link-base；否则 --base 时用它，本地时用书的发布地址
+  const linkBaseRaw = opts.linkBaseExplicit ? opts.linkBase : (remoteBase || BOOK_PUBLIC_BASE)
   if (reader.kind === 'local' && !existsSync(opts.site)) {
     throw new Error(`找不到站点产物目录：${opts.site}\n先构建站点，或把 --site 指到已有产物上`)
   }
@@ -532,7 +540,7 @@ async function main() {
     console.log(`      样式表 ${sheet.href}（已内联，${Buffer.byteLength(siteCss)} 字节）`)
   }
 
-  const linkBase = opts.linkBase && opts.linkBase !== 'none' ? (opts.linkBase.endsWith('/') ? opts.linkBase : `${opts.linkBase}/`) : null
+  const linkBase = linkBaseRaw && linkBaseRaw !== 'none' ? (linkBaseRaw.endsWith('/') ? linkBaseRaw : `${linkBaseRaw}/`) : null
   console.log(`      链接基址 ${linkBase || '（未声明，PDF 内链接会指向本地服务）'}`)
 
   const title = opts.only
@@ -679,10 +687,6 @@ async function main() {
     proc.kill()
     server.close()
   }
-}
-
-function remotePageReaderSafe(opts) {
-  return opts.base ? remotePageReader(opts.base) : localPageReader(opts.site)
 }
 
 function defaultOut(opts, book) {

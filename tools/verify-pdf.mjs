@@ -12,7 +12,9 @@
 //     --print-html <路径>  合成后的打印源 HTML，用来证明「DOM 里有、PDF 里没有」
 //     --expect-title <串>  期望的 PDF /Title（默认「劳动者的账本」）
 //     --expect-author <串> 期望的 PDF /Author（默认「亦幸和幸知」）
-//     --link-base <网址>   期望 PDF 内链接指向的发布地址（默认 https://hencter.github.io/workers-ledger/）
+//     --link-base <网址>   期望站内链接指向的发布地址（默认 https://hencter.github.io/workers-ledger/）
+//     --section <节号>     只核实某一节（单节导出用；标题/正文/抽查都按该节过滤）
+//     --min-pages <N>      期望的最少页数（默认 100；单节导出时传小一点）
 //     --browser <路径|命令> 截图用的浏览器（默认自动探测；也可用 WRC_PDF_BROWSER）
 //     --no-sandbox         截图浏览器加 --no-sandbox --disable-dev-shm-usage（容器/CI）
 //     --shots <目录>       把 PDF 若干页截图（用浏览器渲染真实 PDF 页面，肉眼查豆腐块）
@@ -29,7 +31,7 @@ import { pathToFileURL } from 'node:url'
 
 const args = process.argv.slice(2)
 if (!args.length || args.includes('--help') || args.includes('-h')) {
-  console.log('用法：node tools/verify-pdf.mjs <pdf路径> [--site <目录>] [--print-html <路径>] [--link-base <网址>] [--shots <目录>] [--shot-pages 1,2,3] [--json]')
+  console.log('用法：node tools/verify-pdf.mjs <pdf路径> [--site <目录>] [--print-html <路径>] [--section <节号>] [--min-pages <N>] [--shots <目录>] [--shot-pages 1,2,3] [--json]')
   process.exit(args.length ? 0 : 2)
 }
 const pdfPath = args[0]
@@ -39,7 +41,7 @@ const opt = {
   linkBase: 'https://hencter.github.io/workers-ledger/',
   browser: process.env.WRC_PDF_BROWSER || process.env.CHROME_PATH || null,
   noSandbox: /^(1|true|yes)$/i.test(process.env.WRC_PDF_NO_SANDBOX || ''),
-  shots: null, shotPages: [1, 2, 3], json: false,
+  shots: null, shotPages: [1, 2, 3], json: false, section: null, minPages: 100,
 }
 for (let i = 1; i < args.length; i++) {
   const a = args[i]
@@ -50,6 +52,8 @@ for (let i = 1; i < args.length; i++) {
   else if (a === '--link-base') opt.linkBase = args[++i]
   else if (a === '--browser') opt.browser = args[++i]
   else if (a === '--no-sandbox') opt.noSandbox = true
+  else if (a === '--section') opt.section = Number(args[++i])
+  else if (a === '--min-pages') opt.minPages = Number(args[++i])
   else if (a === '--shots') opt.shots = args[++i]
   else if (a === '--shot-pages') opt.shotPages = args[++i].split(',').map(Number).filter((n) => n > 0)
   else if (a === '--json') opt.json = true
@@ -363,9 +367,10 @@ console.log(`字节 ${buf.length}（${sizeMB.toFixed(2)} MB）· 对象 ${object
 console.log(`/Title ${JSON.stringify(title)} · /Author ${JSON.stringify(author)} · /Lang ${JSON.stringify(lang)} · /Producer ${JSON.stringify(producer)}`)
 if (!opt.json) console.log('\n--- 断言 ---')
 
-add('文件大小不是空壳（≥ 1 MB）', sizeMB >= 1, `${sizeMB.toFixed(2)} MB`)
-add('页数与条目规模相称（≥ 100 页）', pages.length >= 100, `${pages.length} 页`)
-add('提取到大量汉字（≥ 50000）', cjk >= 50000, `${cjk} 个汉字`)
+add(`文件大小不是空壳（≥ ${opt.section ? 0.2 : 1} MB）`, sizeMB >= (opt.section ? 0.2 : 1), `${sizeMB.toFixed(2)} MB`)
+add(`页数与规模相称（≥ ${opt.minPages} 页）`, pages.length >= opt.minPages, `${pages.length} 页`)
+const minCjk = opt.section ? 1000 : 50000
+add(`提取到大量汉字（≥ ${minCjk}）`, cjk >= minCjk, `${cjk} 个汉字`)
 add('没有大量无法还原的字符', unmapped.count < Math.max(2000, fullText.length * 0.05), `未映射字符 ${unmapped.count} 个 / 共 ${fullText.length}`)
 add('/Title 为中文书名', noWs(String(title || '')) === noWs(opt.expectTitle), JSON.stringify(title))
 add('/Author 为指定署名', noWs(String(author || '')) === noWs(opt.expectAuthor), JSON.stringify(author))
@@ -407,33 +412,51 @@ add('没有链接指向本地服务（死链）', localLeak.length === 0, localL
 add('目录做成 PDF 内部跳转链接', internalLinks > 0, `${internalLinks} 个内部目标引用`)
 add('外部引文链接指向真实网址', uris.every((u) => /^https?:\/\//.test(u)) && uris.length > 0, `${uris.length} 个，例如 ${uris[uris.length - 1] || '（无）'}`)
 
-// 抽查：三处指定条目正文
+// 抽查：三处指定条目正文（单节导出时只查在范围内的）
 const spots = [
-  ['第 2 节·加班费', '加班费分三档：平时加班一点五倍工资'],
-  ['第 12 节·竞业限制', '竞业限制有两种写法，规则不一样'],
-  ['第 13 节·工亡三笔钱', '因工死亡有三笔'],
+  [2, '第 2 节·加班费', '加班费分三档：平时加班一点五倍工资'],
+  [12, '第 12 节·竞业限制', '竞业限制有两种写法，规则不一样'],
+  [13, '第 13 节·工亡三笔钱', '因工死亡有三笔'],
 ]
-for (const [name, phrase] of spots) {
+for (const [sec, name, phrase] of spots) {
+  if (opt.section && opt.section !== sec) continue
   add(`抽查命中 ${name}`, fullNoWs.includes(noWs(phrase)), `「${phrase}」`)
 }
 
 // 全量核对：entries.json 里每一条的标题与「说人话」正文都应在 PDF 里。
 // 标题在目录页也有一份，所以「说人话」才真正证明条目正文进了 PDF。
 let perEntry = null
+let entryList = []
 {
   const ep = join(opt.site, 'entries.json')
   if (existsSync(ep)) {
-    const list = JSON.parse(readFileSync(ep, 'utf8')).entries || []
-    const missTitle = list.filter((e) => !fullNoWs.includes(noWs(String(e.标题 || ''))))
-    const leaded = list.filter((e) => noWs(String(e.说人话 || '')).length >= 8)
+    const all = JSON.parse(readFileSync(ep, 'utf8')).entries || []
+    entryList = opt.section ? all.filter((e) => Number(e.节号) === opt.section) : all
+    const scope = opt.section ? `第 ${opt.section} 节` : '全书'
+    const missTitle = entryList.filter((e) => !fullNoWs.includes(noWs(String(e.标题 || ''))))
+    const leaded = entryList.filter((e) => noWs(String(e.说人话 || '')).length >= 8)
     const missLead = leaded.filter((e) => !fullNoWs.includes(noWs(String(e.说人话)).slice(0, 12)))
     perEntry = {
-      total: list.length, missTitle: missTitle.length, leadChecked: leaded.length, missLead: missLead.length,
+      scope, total: entryList.length, missTitle: missTitle.length, leadChecked: leaded.length, missLead: missLead.length,
       sample: missLead.slice(0, 3).map((e) => `${e.节号}.${e.条号}`),
     }
-    add(`全部条目标题都在 PDF 里（${list.length} 条）`, missTitle.length === 0, missTitle.length ? `缺 ${missTitle.length} 条，例如 ${missTitle.slice(0, 3).map((e) => `${e.节号}.${e.条号} ${e.标题}`).join('；')}` : '一条不缺')
-    add(`全部条目的正文片段都在 PDF 里（${leaded.length} 条「说人话」首 12 字）`, missLead.length === 0, missLead.length ? `缺 ${missLead.length} 条，例如 ${perEntry.sample.join('、')}` : '一条不缺')
+    add(`${scope}全部条目标题都在 PDF 里（${entryList.length} 条）`, missTitle.length === 0, missTitle.length ? `缺 ${missTitle.length} 条，例如 ${missTitle.slice(0, 3).map((e) => `${e.节号}.${e.条号} ${e.标题}`).join('；')}` : '一条不缺')
+    add(`${scope}全部条目的正文片段都在 PDF 里（${leaded.length} 条「说人话」首 12 字）`, missLead.length === 0, missLead.length ? `缺 ${missLead.length} 条，例如 ${perEntry.sample.join('、')}` : '一条不缺')
   }
+}
+
+// 条目标题不落页底：看条目正文页的最后一行是不是正好停在某个条目标题上。
+// 目录页以标题结尾是正常的（它本来就是标题列表），所以只看含「说人话」的正文页。
+if (entryList.length) {
+  const titleSet = new Set(entryList.map((e) => noWs(String(e.标题 || ''))))
+  const dangling = []
+  pageTexts.forEach((t, i) => {
+    if (!t.includes('说人话')) return
+    const lines = t.split('\n').map(noWs).filter((x) => x.length > 4 && !/^第\d+页/.test(x) && !/^共\d+页$/.test(x))
+    const last = lines[lines.length - 1]
+    if (last && titleSet.has(last)) dangling.push(i + 1)
+  })
+  add('没有条目标题孤零零留在页底', dangling.length === 0, dangling.length ? `第 ${dangling.slice(0, 5).join('、')} 页（共 ${dangling.length} 页）` : '0 页')
 }
 
 // 打印样式生效：首页 DOM 里有导航/顶栏/检索面板，PDF 里必须一个都没有
@@ -452,9 +475,13 @@ if (opt.printHtml && existsSync(opt.printHtml)) {
 }
 
 // 封面署名、目录、页脚
-add('封面/目录含署名「亦幸和幸知」', fullNoWs.includes(noWs(opt.expectAuthor)), `出现 ${(fullText.match(new RegExp(opt.expectAuthor, 'g')) || []).length} 次`)
-add('目录页覆盖全部节（≥ 10 个节标题）', (fullNoWs.match(/第\d+节·/g) || []).length >= 10, `${(fullNoWs.match(/第\d+节·/g) || []).length} 个节标题`)
-add('有独立目录页', fullNoWs.includes(noWs('本目录条目可直接跳转')), '目录说明段在 PDF 里')
+// 封面署名、目录、页脚（单节导出没有封面与全书目录，这几项不适用）
+if (!opt.section) {
+  const authorHits = (fullNoWs.match(new RegExp(noWs(opt.expectAuthor), 'g')) || []).length
+  add('封面/目录含署名「亦幸和幸知」', authorHits > 0, `出现 ${authorHits} 次`)
+  add('目录页覆盖全部节（≥ 10 个节标题）', (fullNoWs.match(/第\d+节·/g) || []).length >= 10, `${(fullNoWs.match(/第\d+节·/g) || []).length} 个节标题`)
+  add('有独立目录页', fullNoWs.includes(noWs('本目录条目可直接跳转')), '目录说明段在 PDF 里')
+}
 add('页脚含页码', /第\s*\d+\s*页/.test(fullText), (fullText.match(/第\s*\d+\s*页/g) || []).slice(0, 2).join(' '))
 
 // 空白页统计

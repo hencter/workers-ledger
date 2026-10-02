@@ -70,7 +70,7 @@ function attr(html, name) {
   return m ? m[1] ?? m[2] ?? m[3] : null
 }
 
-/* 索引里的 url 带部署前缀（GitHub Pages 项目页形如 /work-rights-cn/），
+/* 索引里的 url 带部署前缀（GitHub Pages 项目页形如 /workers-ledger/），
    而产物目录是前缀之后的相对路径，所以先按站点自己的前缀削一刀。
    前缀从首页 <html data-base> 取，站点换 baseURL 也不用改脚本。 */
 const basePath = attr(homeHtml, 'data-base') || '/'

@@ -20,7 +20,9 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SITE = resolve(HERE, '..', 'site')
 const PUBLIC = join(SITE, 'public')
-const BASE = process.env.WRC_BASE_URL || 'https://hencter.github.io/work-rights-cn/'
+// 默认发布地址。仓库改名后这里是 workers-ledger，别再改回旧名——
+// canonical 与 Open Graph 都按它输出绝对地址，写错会让所有页面的规范地址指向 404。
+const BASE = process.env.WRC_BASE_URL || 'https://hencter.github.io/workers-ledger/'
 
 const fail = (msg) => { console.error(`[失败] ${msg}`); process.exit(1) }
 

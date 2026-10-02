@@ -46,7 +46,7 @@ const WIDTHS = widths.length ? widths : [1512, 1280, 1920]
 
 /** 起一个只读静态服务。
  * 必须走 http 而不是 file://：站点是按子路径部署的（baseURL 形如
- * https://user.github.io/work-rights-cn/），产出的资源地址是 /work-rights-cn/css/…
+ * https://user.github.io/workers-ledger/），产出的资源地址是 /workers-ledger/css/…
  * 这种根绝对路径。用 file:// 打开时浏览器会去文件系统根目录找，找不到样式表，
  * 于是量到的「布局」其实是没有任何 CSS 的裸 HTML —— 我第一版就踩了这个坑，
  * 量出主区宽 1496px、边距 8px，看着像样式写错了，实际是样式根本没加载。
