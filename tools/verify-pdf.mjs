@@ -398,15 +398,14 @@ let outlineCount = 0
 }
 add('含 PDF 书签（大纲）', outlineCount > 0, `${outlineCount} 个书签节点`)
 
-// 链接：站内链接应指向发布地址（否则点开是本地服务死链）；外部引文链接保持原地址
+// 链接：站内跳转应做成 PDF 内部锚点；外部引文链接应保持真实网址；都不该指向本地服务
 const uris = [...S.matchAll(/\/URI\s*\(([^)]*)\)/g)].map((m) => m[1])
-const linkBase = opt.linkBase.endsWith('/') ? opt.linkBase : `${opt.linkBase}/`
-const internalLinks = uris.filter((u) => u.startsWith(linkBase))
 const localLeak = uris.filter((u) => /127\.0\.0\.1|localhost/.test(u))
-add('PDF 内含可点链接注解', uris.length > 0, `${uris.length} 个 /URI 注解`)
+const internalLinks = (S.match(/\/Dest\s*\[/g) || []).length + (S.match(/\/GoTo\b/g) || []).length
+add('PDF 内含可点外部链接注解', uris.length > 0, `${uris.length} 个 /URI 注解，例如 ${uris[0] || '（无）'}`)
 add('没有链接指向本地服务（死链）', localLeak.length === 0, localLeak.length ? `有 ${localLeak.length} 个，例如 ${localLeak[0]}` : '0 个')
-add(`站内链接指向发布地址 ${linkBase}`, internalLinks.length > 0, `${internalLinks.length} 个，例如 ${internalLinks[0] || '（无）'}`)
-add('外部引文链接保持原地址', uris.length - internalLinks.length > 0, `${uris.length - internalLinks.length} 个，例如 ${(uris.find((u) => !u.startsWith(linkBase)) || '（无）')}`)
+add('目录做成 PDF 内部跳转链接', internalLinks > 0, `${internalLinks} 个内部目标引用`)
+add('外部引文链接指向真实网址', uris.every((u) => /^https?:\/\//.test(u)) && uris.length > 0, `${uris.length} 个，例如 ${uris[uris.length - 1] || '（无）'}`)
 
 // 抽查：三处指定条目正文
 const spots = [
@@ -454,7 +453,8 @@ if (opt.printHtml && existsSync(opt.printHtml)) {
 
 // 封面署名、目录、页脚
 add('封面/目录含署名「亦幸和幸知」', fullNoWs.includes(noWs(opt.expectAuthor)), `出现 ${(fullText.match(new RegExp(opt.expectAuthor, 'g')) || []).length} 次`)
-add('目录页覆盖全部节（≥ 10 个节标题）', (fullText.match(/第 \d+ 节 · /g) || []).length >= 10, `${(fullText.match(/第 \d+ 节 · /g) || []).length} 个节标题`)
+add('目录页覆盖全部节（≥ 10 个节标题）', (fullNoWs.match(/第\d+节·/g) || []).length >= 10, `${(fullNoWs.match(/第\d+节·/g) || []).length} 个节标题`)
+add('有独立目录页', fullNoWs.includes(noWs('本目录条目可直接跳转')), '目录说明段在 PDF 里')
 add('页脚含页码', /第\s*\d+\s*页/.test(fullText), (fullText.match(/第\s*\d+\s*页/g) || []).slice(0, 2).join(' '))
 
 // 空白页统计
@@ -506,11 +506,14 @@ if (opt.shots) {
       })
       const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pending.set(i, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id: i, method, params })) })
       await send('Page.enable')
-      await send('Emulation.setDeviceMetricsOverride', { width: 900, height: 1250, deviceScaleFactor: 1, mobile: false })
+      await send('Emulation.setDeviceMetricsOverride', { width: 1300, height: 1600, deviceScaleFactor: 1, mobile: false })
       const fileUrl = pathToFileURL(resolve(pdfPath)).href
       for (const p of opt.shotPages) {
+        // 先回空白页再进 PDF：同一个文件只换 #page 片段时，阅读器不一定重新定位
+        await send('Page.navigate', { url: 'about:blank' })
+        await sleep(400)
         await send('Page.navigate', { url: `${fileUrl}#page=${p}&zoom=100` })
-        await sleep(2500)
+        await sleep(2600)
         const shot = await send('Page.captureScreenshot', { format: 'png' })
         const out = join(opt.shots, `第${String(p).padStart(3, '0')}页.png`)
         writeFileSync(out, Buffer.from(shot.data, 'base64'))

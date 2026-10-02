@@ -201,6 +201,9 @@ function remotePageReader(base) {
   }
 }
 
+/** 给抠出来的整段标签补一个 id，供目录做 PDF 内部跳转锚点 */
+const withId = (html, id) => html.replace(/^<([a-zA-Z]+)\b/, (m, tag) => `<${tag} id="${id}"`)
+
 async function loadBook(opts, reader) {
   const entriesRaw = JSON.parse(await reader.text('/entries.json'))
   const all = entriesRaw.entries || []
@@ -239,9 +242,9 @@ async function loadBook(opts, reader) {
     for (const e of list) {
       const article = sliceTag(stripScripts(await reader.text(`${e.url}index.html`)), 'article', 'entry')
       if (!article) throw new Error(`条目页里找不到 <article class="entry">：${e.url}`)
-      entries.push({ meta: e, html: article })
+      entries.push({ meta: e, html: withId(article, `entry-${e.节号}-${e.条号}`) })
     }
-    sections.push({ num, name: list[0].节名 || '', headHtml, entries })
+    sections.push({ num, name: list[0].节名 || '', headHtml: withId(headHtml, `sec-${num}`), entries })
   }
   return { sections, total: wanted.length }
 }
@@ -284,9 +287,10 @@ h1, h2, h3, h4 { break-after: avoid-page; }
 .book-toc h1 { font-size: 19pt; margin: 0 0 .3em; }
 .book-toc__note { color: #555; font-size: 9.5pt; margin: 0 0 1.2em; }
 .book-toc ol { list-style: none; margin: 0; padding: 0; }
-.book-toc__sec { display: block; font-weight: 700; font-size: 11.5pt; margin: .9em 0 .25em; break-after: avoid-page; }
+.book-toc__sec { display: block; font-weight: 700; font-size: 11.5pt; margin: .9em 0 .25em; break-after: avoid-page; color: inherit; text-decoration: none; }
 .book-toc__entries { padding-left: 1.5em !important; }
 .book-toc__entries li { margin: .16em 0; break-inside: avoid; }
+.book-toc__link { color: inherit; text-decoration: none; }
 .book-toc__num { color: #555; margin-right: .45em; font-variant-numeric: tabular-nums; }
 .book-toc__group { break-inside: avoid; }
 `
@@ -303,15 +307,15 @@ function buildTitlePage(sections, total) {
 
 function buildToc(sections) {
   const parts = sections.map((s) => `    <div class="book-toc__group">
-      <span class="book-toc__sec">第 ${s.num} 节 · ${escapeHtml(s.name)}（${s.entries.length} 条）</span>
+      <a class="book-toc__sec" href="#sec-${s.num}">第 ${s.num} 节 · ${escapeHtml(s.name)}（${s.entries.length} 条）</a>
       <ol class="book-toc__entries">
-        ${s.entries.map((e) => `<li><span class="book-toc__num">${e.meta.节号}.${e.meta.条号}</span>${escapeHtml(e.meta.标题 || '')}</li>`).join('\n        ')}
+        ${s.entries.map((e) => `<li><a class="book-toc__link" href="#entry-${e.meta.节号}-${e.meta.条号}"><span class="book-toc__num">${e.meta.节号}.${e.meta.条号}</span>${escapeHtml(e.meta.标题 || '')}</a></li>`).join('\n        ')}
       </ol>
     </div>`)
   return `<section class="shell book-front"><main class="main">
   <nav class="book-toc" aria-label="目录">
     <h1>目录</h1>
-    <p class="book-toc__note">本目录不含页码：浏览器打印无法把实际页码回填到正文里，这是本方法的已知限制。</p>
+    <p class="book-toc__note">本目录条目可直接跳转（PDF 内部链接），但没有页码：浏览器打印无法把实际页码回填到正文里。</p>
     <p class="book-toc__note">${BOOK_TITLE} · ${BOOK_AUTHOR}</p>
 ${parts.join('\n')}
   </nav>
