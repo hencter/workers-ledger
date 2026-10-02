@@ -1,0 +1,83 @@
+{{- /*
+  「纠错」一键链接 —— 点一下直达 GitHub 新建 issue 页，标题与正文都已填好。
+
+  ## 为什么要带预填内容
+
+  让读者从零写一份 issue，绝大多数人不会写：不知道要给什么、给到什么程度。
+  结果是两种坏情况——要么没人提，要么提到「这条好像不对」就没了，我们还得回问
+  三个回合才能开始核对。把「涉及哪一条／书上写的／你看到的／官方链接」四段先摆好，
+  读者只需填空，我们拿到就能直接核对。
+
+  ## 参数
+
+    page  当前页面（必给）——用于取 节号／条号／标题／依据／来源／核对日期
+    title 覆盖预填标题（可选）
+    body  覆盖预填正文（可选，markdown）
+
+  ## 为什么不手拼查询串
+
+  中文、`#`、换行都必须正确百分号编码。手拼最容易漏的是 `#`——原样写进 URL 后
+  浏览器会把它当锚点，**锚点之后的正文全部丢失**，而链接看起来完全正常。
+  这里交给 Hugo 的 querify 做标准 form 编码。
+*/ -}}
+{{- $cfg := partial "site-config.html" . -}}
+{{- with $cfg.issueURL -}}
+  {{- $p := $.page -}}
+  {{- $entry := "" -}}
+  {{- if and $p $p.Params.节号 -}}
+    {{- $entry = printf "第 %v 节第 %v.%v 条" $p.Params.节号 $p.Params.节号 $p.Params.条号 -}}
+  {{- end -}}
+
+  {{- $defaultTitle := "纠错" -}}
+  {{- if $p -}}
+    {{- if $entry -}}
+      {{- $defaultTitle = printf "纠错：%v %v" $entry $p.Title -}}
+    {{- else -}}
+      {{- $defaultTitle = printf "纠错：%v" $p.Title -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $bodyLines := slice
+    "## 涉及哪一条"
+    ""
+    (cond (ne $entry "") (printf "- %v：%v" $entry $p.Title) "- （请填写条目编号与标题，或说明是站点整体的问题）")
+    (cond (and $p $p.Permalink) (printf "- 条目页：%v" $p.Permalink) "")
+    ""
+    "## 问题是什么"
+    ""
+    "书上写："
+    ""
+    "我看到的："
+    ""
+    "## 我核对的官方页面"
+    ""
+    "- 官方页面地址："
+    (cond (and $p (ne ($p.Params.来源 | default "") "")) (printf "- 书上「来源」栏写的是：%v" $p.Params.来源) "- （条目「来源」栏为空）")
+    (cond (and $p (ne ($p.Params.依据 | default "") "")) (printf "- 书上「依据」栏写的是：%v" $p.Params.依据) "- （条目「依据」栏为空）")
+    (cond (and $p $p.Params.核对日期) (printf "- 条目标注的核对日期：%v" $p.Params.核对日期) "")
+    ""
+    "## 页面上实际写的内容（请直接复制粘贴原文，不要转述）"
+    ""
+    "```text"
+    ""
+    "```"
+    ""
+    "## 该文件的版本与施行日期（页面上写的）"
+    ""
+    ""
+    "---"
+    ""
+    "> 提交前请确认：① 核对的是官方页面（gov.cn／npc.gov.cn／court.gov.cn 等），不是二手转述；"
+    "> ② 上面那段是**复制粘贴的原文**，不是转述；③ 没有写入任何个人信息。"
+    "> 如果只是「我查不到原文」，也请提——写清查过哪些地方、用了什么关键词，同样有用。"
+  -}}
+  {{- $defaultBody := delimit $bodyLines "\n" -}}
+
+  {{- $t := $defaultTitle -}}
+  {{- with $.title }}{{ $t = . }}{{ end -}}
+  {{- $b := $defaultBody -}}
+  {{- with $.body }}{{ $b = . }}{{ end -}}
+
+  {{- $url := printf "%s?%s" $cfg.issueURL (querify "title" $t "body" $b) -}}
+  <a class="issue-link" href="{{ $url }}" target="_blank" rel="noopener noreferrer">在 GitHub 上提 issue</a>
+{{- end -}}

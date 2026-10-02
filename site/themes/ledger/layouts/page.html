@@ -27,6 +27,18 @@
 
   {{ partial "entry-fields.html" . }}
 
+  {{- /* 纠错入口。放在字段之后：读者看完「依据」「来源」「核对日期」才可能发现哪一项不对，
+         此时正好在手边。链接预填了条目编号、书上写的依据与来源，以及要填的四段结构。 */ -}}
+  <aside class="entry-fix" aria-label="条目纠错">
+    <p class="entry-fix__title">这一条有错？</p>
+    <p class="entry-fix__hint">
+      发现法条号、版本、金额、期限或地方口径有出入，或依据已换版，欢迎指出。
+      请带上你核对的<strong>官方页面地址</strong>与<strong>页面上实际写的内容</strong>——
+      有这两样我们才能核对；只写「好像不对」无法采信。
+    </p>
+    {{ partial "纠错链接.html" (dict "page" .) }}
+  </aside>
+
   {{- /* 同节翻页按 weight（即条号）顺序算，与节页列表顺序一致。
          不用 .PrevInSection/.NextInSection：它们的排序语义与 weight 顺序相反，
          标出来会出现「上一条」指向更大条号的情况。 */ -}}

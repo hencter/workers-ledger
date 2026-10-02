@@ -14,11 +14,17 @@
 
   取不到时返回空串，调用方用 {{ with }} 决定是否渲染——
   **不要在这里退回硬编码地址**：硬编码正是要避免的东西。
+
+  issueURL 是「新建 issue」的基地址（不含预填参数）。预填参数由 partials/纠错链接.html
+  用 querify 拼——**不要手拼查询串**：中文、井号、换行都必须正确百分号编码，
+  手拼容易漏（把 `#` 原样写进 URL，浏览器会当成锚点，后面的正文全丢）。
 */ -}}
 {{- $cfg := hugo.Data.site | default dict -}}
+{{- $repo := $cfg.repo | default "" -}}
 {{- return (dict
-  "repo" ($cfg.repo | default "")
-  "repoURL" ($cfg.repoURL | default (cond (ne ($cfg.repo | default "") "") (printf "https://github.com/%s" $cfg.repo) ""))
+  "repo" $repo
+  "repoURL" ($cfg.repoURL | default (cond (ne $repo "") (printf "https://github.com/%s" $repo) ""))
+  "issueURL" (cond (ne $repo "") (printf "https://github.com/%s/issues/new" $repo) "")
   "publishUrl" ($cfg.publishUrl | default "")
   "domain" ($cfg.domain | default "")
   "hosting" ($cfg.hosting | default "")

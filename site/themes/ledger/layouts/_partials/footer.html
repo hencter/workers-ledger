@@ -2,6 +2,14 @@
   <div class="footer__inner">
     <p>{{ site.Params.disclaimer | markdownify }}</p>
     {{- $cfg := partial "site-config.html" . }}
+    {{- /* 文档页（渠道页、授权页等由生成脚本从 docs/ 产出的页面）在页脚给一个纠错入口：
+           它们正文里会写「请开 issue」，但页面上得真有那个按钮，否则等于让读者自己找。
+           条目页的入口在正文里（见 page.html），那里位置更贴切，不在这里重复。 */ -}}
+    {{- if .Params.来源文件 }}
+    <p class="footer__fix">
+      {{ partial "纠错链接.html" (dict "page" . "title" (printf "纠错：%s" .Title)) }}
+    </p>
+    {{- end }}
     <div class="footer__meta">
       <span>{{ site.Params.generatorNote }}</span>
       <span>本次构建：{{ now.Format "2006-01-02 15:04" }}</span>

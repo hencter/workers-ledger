@@ -205,6 +205,44 @@ if (cfg && cfg.repo) {
 }
 
 // ---------------------------------------------------------------------------
+// 6) 纠错入口：每条内容都要能一键提出「带证据的 issue」
+//
+//    为什么值得断言：这是**跨文件的三段接线**——site.config.json 的 repo
+//    → site-config.html 的 issueURL → 纠错链接.html 的预填参数。任何一段断了，
+//    页面上要么没按钮，要么点开是空白 issue，而页面看起来都正常。
+//    （写这一段时仅核对「title 到底有没有进 URL」就返工两次：一次是正则只匹配
+//      无引号属性，一次是把 HTML 实体 &#43; 误当成编码错误。都是检测器的错。）
+// ---------------------------------------------------------------------------
+if (cfg && cfg.repo) {
+  const issueBase = `https://github.com/${cfg.repo}/issues/new`
+  let 链接页数 = 0
+  let 预填完整 = 0
+  const walkIssues = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name)
+      if (e.isDirectory()) walkIssues(p)
+      else if (e.name === 'index.html') {
+        const h = readFileSync(p, 'utf8')
+        const m = /<a class="?issue-link"? href="([^"]+)"/.exec(h)
+        if (!m) continue
+        链接页数++
+        // Hugo 会把 href 里的 `+` 转成 HTML 实体 `&#43;`，浏览器解析 href 时会还原。
+        // 断言前必须按浏览器的方式解码，否则会把编码当错误。
+        const dec = m[1].replace(/&#(\d+);/g, (_, c) => String.fromCharCode(Number(c))).replace(/&amp;/g, '&')
+        if (!dec.startsWith(issueBase)) continue
+        const q = new URL(dec).searchParams
+        const body = q.get('body') || ''
+        if (q.get('title') && /涉及哪一条/.test(body) && /我核对的官方页面/.test(body)) 预填完整++
+      }
+    }
+  }
+  walkIssues(PUBLIC)
+  add('纠错入口覆盖全部内容页', 链接页数 >= 300, `只有 ${链接页数} 个页面有纠错按钮`)
+  add('纠错入口的预填标题与结构完整', 预填完整 >= 300,
+    `${链接页数} 个按钮里只有 ${预填完整} 个带完整预填——检查 partials/纠错链接.html 与 site-config.html 的 issueURL`)
+}
+
+// ---------------------------------------------------------------------------
 
 console.log('GEO 与授权声明断言')
 console.log(`产物目录：${PUBLIC}`)
