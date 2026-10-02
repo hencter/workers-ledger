@@ -7,7 +7,7 @@
 <meta property="og:title" content="{{ if .IsHome }}{{ site.Title }}{{ else }}{{ .Title }}{{ end }}">
 <meta property="og:description" content="{{ $desc }}">
 <meta property="og:site_name" content="{{ site.Title }}">
-<meta property="og:locale" content="{{ replace site.Language.Locale "-" "_" }}">
+<meta property="og:locale" content="{{ replace (partial "locale.html" .) "-" "_" }}">
 {{- with .Permalink }}
 <meta property="og:url" content="{{ . }}">
 {{- end }}

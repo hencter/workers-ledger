@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ site.Language.Locale }}" dir="{{ or site.Language.Direction `ltr` }}"
+<html lang="{{ partial "locale.html" . }}" dir="{{ or site.Language.Direction `ltr` }}"
       data-base="{{ site.Home.RelPermalink }}"
       data-stale-days="{{ site.Params.staleDays | default 180 }}">
 <head>

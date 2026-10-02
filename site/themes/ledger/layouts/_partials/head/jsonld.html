@@ -11,7 +11,7 @@
   "@type" "WebSite"
   "name" site.Title
   "description" $desc
-  "inLanguage" site.Language.Locale
+  "inLanguage" (partial "locale.html" .)
   "url" site.Home.Permalink
 -}}
 {{- if .IsPage -}}
@@ -22,7 +22,7 @@
     "@type" "Article"
     "headline" .Title
     "description" $desc
-    "inLanguage" site.Language.Locale
+    "inLanguage" (partial "locale.html" .)
     "url" .Permalink
     "datePublished" $published
     "mainEntityOfPage" (dict "@type" "WebPage" "@id" .Permalink)
@@ -34,7 +34,7 @@
     "@type" "CollectionPage"
     "name" .Title
     "description" $desc
-    "inLanguage" site.Language.Locale
+    "inLanguage" (partial "locale.html" .)
     "url" .Permalink
     "isPartOf" (dict "@type" "Book" "name" site.Title "url" site.Home.Permalink)
   -}}

@@ -1,0 +1,17 @@
+{{- /* 返回当前站点的语言标识，跨 Hugo 版本可用。
+       为什么需要它：`.Locale` 是 0.158 才引入的（旧版只有 `.Lang`），
+       而本项目在 0.167 上开发、却撞到一个 Hugo 0.147.5 的构建环境，
+       报错 `can't evaluate field Locale in type *langs.Language`。
+       实测（Hugo 0.167）：`.Locale` = "zh-CN"、`.Lang` = "en" —— 两者不等价，
+       所以不能简单换成 .Lang，否则 <html lang> 与 og:locale 会退化成 en。
+       取值优先级：.Locale（0.158+，正确值）→ .Lang（旧版兜底）。
+       既保住新版本的正确输出，也兼容旧版本构建。 */ -}}
+{{- $loc := "zh-CN" -}}
+{{- with site.Language.Locale -}}
+  {{- $loc = . -}}
+{{- else -}}
+  {{- with site.Language.Lang -}}
+    {{- $loc = . -}}
+  {{- end -}}
+{{- end -}}
+{{- return $loc -}}

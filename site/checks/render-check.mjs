@@ -189,6 +189,38 @@ checkTrue('首页脚本来自本站指纹文件', /js\/main\.[0-9a-f]+\.js/.test
 const robotsTag = /<meta[^>]*name=(?:"robots"|robots)[^>]*>/.exec(homeHtml)?.[0] || ''
 checkTrue('production 环境输出 index, follow', robotsTag.includes('index, follow'))
 
+// —— 语言标识与 Hugo 版本兼容 ——
+// 真实事故：本项目在 Hugo 0.167 上开发（`.Locale` 可用，返回 "zh-CN"），
+// 但撞到一个 Hugo 0.147.5 的构建环境，报
+//   can't evaluate field Locale in type *langs.Language
+// 因为 `.Locale` 是 0.158 才引入的（见参考：0.158 起 languageCode → locale，
+// 语言对象的 Lang/LanguageCode/LanguageDirection/LanguageName 被弃用）。
+// 模板改用 partial "locale.html"：优先 .Locale、旧版退回 .Lang。
+// 实测 0.167 下 .Locale="zh-CN" 而 .Lang="en"，两者不等价，所以不能直接换成 .Lang。
+// 下面三条既盯输出值，也盯住「别再裸用 .Locale」。
+const langAttr = /<html[^>]*\blang=(?:"([^"]*)"|([^ >]+))/.exec(homeHtml)
+check('html lang 为 zh-CN（不是 en）', (langAttr?.[1] || langAttr?.[2] || '').trim(), 'zh-CN')
+const ogLocaleTag = /<meta[^>]*property="og:locale"[^>]*>/.exec(homeHtml)?.[0] || ''
+checkTrue('og:locale 为 zh_CN', ogLocaleTag.includes('zh_CN'))
+const themeDir = path.join(SITE, 'themes')
+let rawLocaleUses = []
+const walkHtml = (dir) => {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name)
+    if (e.isDirectory()) walkHtml(p)
+    else if (e.name.endsWith('.html')) {
+      const body = fs.readFileSync(p, 'utf8')
+      // locale.html 自身就是做兼容探测的，跳过它
+      if (p.endsWith('locale.html')) continue
+      body.split(/\r?\n/).forEach((line, i) => {
+        if (/site\.Language\.Locale/.test(line)) rawLocaleUses.push(`${p}:${i + 1}`)
+      })
+    }
+  }
+}
+walkHtml(themeDir)
+check('模板里没有裸用 site.Language.Locale（Hugo <0.158 会构建失败）', rawLocaleUses.length, 0)
+
 // —— 版面宽度 ——
 // 背景与实测数据见 site/checks/measure-layout.mjs（用无头浏览器量真实盒子）。
 // 前两轮是靠「可用宽度 − 上限」估算的，漏掉了 .entry 上还有第二层上限，
