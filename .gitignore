@@ -11,3 +11,13 @@ Thumbs.db
 .tmp-verify/
 .tmp-audit/
 .tmp/
+
+# Hugo 构建产物：只跟踪源，不跟踪输出
+site/public/
+site/resources/
+.hugo_build.lock
+
+# 生成产物：由 tools/build-site.mjs 从 book/ 产出，不手工维护、不进版本库。
+# 站点构建前跑一次生成脚本即可；提交它们只会带来第二份会漂移的正文。
+site/content/
+site/data/
