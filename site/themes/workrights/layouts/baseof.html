@@ -12,7 +12,7 @@
     <aside class="sidebar" id="sidebar" aria-label="全书目录">
       {{ partial "sidebar.html" . }}
     </aside>
-    <main class="main{{ if .IsHome }} main--home{{ end }}" id="main">
+    <main class="main" id="main">
       {{ block "main" . }}{{ end }}
     </main>
   </div>

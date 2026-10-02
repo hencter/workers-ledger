@@ -145,26 +145,34 @@
 
 .nav-list { list-style: none; margin: 0; padding: 0; }
 
+/* 节与节之间留出间距，让「一级条目」有分组感；否则 14 行一样密，看不出层级。 */
+.nav-sec + .nav-sec { margin-top: 2px; }
+
 .nav-sec > a {
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
-  min-height: 44px;
-  padding: var(--sp-2) var(--sp-2);
+  min-height: 38px;
+  padding: 7px var(--sp-2);
   border-radius: var(--radius-s);
   color: var(--text-mid);
   text-decoration: none;
-  font-size: var(--fs-300);
+  font-size: 14px;
   line-height: var(--lh-snug);
 }
 .nav-sec > a:hover { background: var(--bg-hover); color: var(--text); }
+
+/* 序号列从 1.7em 收到 1.5em：它只放一个到两位的数字，
+   省下的横向宽度直接给节名，14 行的导航每一行都受益。 */
 .nav-sec__num {
-  flex: 0 0 1.7em;
+  flex: 0 0 1.5em;
   font-family: var(--font-mono);
   font-size: var(--fs-100);
   color: var(--text-dim);
-  padding-top: .25em;
+  padding-top: .2em;
 }
+/* 当前节用「底色 + 左侧细条」表达，不用原来的 inset 阴影压在小字上。
+   细条用 border-radius 收圆，贴着行左侧，视觉重量轻得多。 */
 .nav-sec.is-current > a {
   color: var(--text);
   font-weight: 700;
@@ -173,38 +181,44 @@
 }
 .nav-sec.is-current .nav-sec__num { color: var(--accent-ink); }
 
+/* 展开在当前节下的条目列表。
+   原来的写法同时用 padding-left 1.7em + margin-left 缩进 + border-left，
+   再减去圆点占位，文字列只剩约 216px，而条目标题普遍 20 字以上，被迫折成 3 到 5 行。
+   现在只用一条细线定位层级，把省下的宽度全给标题。 */
 .nav-entries {
   list-style: none;
-  margin: var(--sp-1) 0 var(--sp-3);
-  padding: 0 0 0 1.7em;
+  margin: 2px 0 var(--sp-3);
+  padding: 0 0 0 var(--sp-2);
   border-left: 1px solid var(--line);
-  margin-left: calc(var(--sp-2) + .85em);
+  margin-left: 1.05em;
 }
+/* 条目行用悬挂缩进而不是 flex 两列。flex 下圆点自成弹性项：
+   可以 flex-shrink 到 0（视觉上被压没），换行后的文字也停在圆点右边、白白让出几像素。
+   悬挂缩进让圆点固定在首行行首，折行部分用满宽度，宽度全部留给标题。 */
 .nav-entries a {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: baseline;
-  padding: var(--sp-2) var(--sp-2);
-  min-height: 40px;
+  display: block;
+  padding: 6px 8px;
   border-radius: var(--radius-s);
   color: var(--text-mid);
   text-decoration: none;
-  font-size: var(--fs-200);
-  line-height: var(--lh-snug);
+  font-size: 13px;
+  line-height: 1.6;
 }
 .nav-entries a:hover { background: var(--bg-hover); color: var(--text); }
 .nav-entries a[aria-current="page"] {
   background: var(--accent-wash);
   color: var(--accent-ink);
   font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
-.nav-entries__num {
-  flex: 0 0 auto;
-  font-family: var(--font-mono);
-  font-size: var(--fs-100);
-  color: var(--text-dim);
+/* 圆点贴在首行行首；flex 0 0 auto 在 flex 布局里才有意义，这里恢复为内联块。 */
+.nav-entries .dot {
+  display: inline-block;
+  flex: none;
+  margin: 0 4px 0 0;
+  vertical-align: .1em;
 }
-.nav-entries a[aria-current="page"] .nav-entries__num { color: inherit; }
+.nav-entries a[aria-current="page"] .dot { background: var(--accent); }
 
 /* 条目左侧的小圆点，颜色即主张强度 */
 .dot {
@@ -235,18 +249,19 @@
   background: var(--bg);
 }
 @media (min-width: 1080px) {
-  .main { padding: var(--sp-7) 0 var(--sp-8); max-width: calc(var(--measure) + var(--sp-7)); }
+  .main { padding: var(--sp-7) 0 var(--sp-8); }
 }
 
-/* 首页用满栅格给它的宽度。
-   正文页（条目页、节页）保持上面的阅读上限——一行 46rem 更易读，不该为了填满而拉长。
-   但首页是一堆卡片与筛选控件，不是连续正文：限制到 46rem 会白掉大半屏，
-   而且 search.css 里 1240px / 1400px 那两条宽屏断点因为容器只有 46rem 永远触发不了。
-   实测视口 1624px 下：侧栏 288 + 间距 44 + 两侧留白 ~130，栅格给主区约 1130px，
-   减去 46rem+44px 的 780px 上限，右侧白掉约 350px。 */
-@media (min-width: 1080px) {
-  .main--home { max-width: none; }
-}
+/* 主区不限宽，行宽交给真正需要限制的内容自己管。
+   原来这里写死 max-width: calc(var(--measure) + var(--sp-7))，效果是整个内容区
+   被卡在一个固定宽度上，宽屏右侧大片空白。真实测量（site/checks/measure-layout.mjs
+   用无头浏览器量盒子，不是估算）：
+     1512px 视口 · 节页 主区 908px，右侧留到视口边 196px
+     1920px 视口 · 节页 主区 908px，右侧留到视口边 604px
+   而这一层之外还有一层 .entry{max-width:var(--measure)}——两层叠起来，
+   只改一层看不出效果，前两轮就是这么误判的。
+   现在：卡片列表、字段表、检索面板吃满可用宽度；
+   连续正文（.prose、.lead-block、.hero、.page-head）各自保留自己的阅读行宽。 */
 
 /* 页脚 */
 .footer {
