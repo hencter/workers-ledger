@@ -10,9 +10,12 @@
 //   node tools/verify-pdf.mjs <pdf路径> [选项]
 //     --site <目录>        站点产物目录（默认 site/public），用来取 entries.json 逐条核对
 //     --print-html <路径>  合成后的打印源 HTML，用来证明「DOM 里有、PDF 里没有」
-//     --expect-title <串>  期望的 PDF /Title（默认「劳动权益与合规指南」）
-//     --expect-author <串> 期望的 PDF /Author
-//     --shots <目录>       额外把 PDF 若干页截图（用浏览器渲染真实 PDF 页面，肉眼查豆腐块）
+//     --expect-title <串>  期望的 PDF /Title（默认「劳动者的账本」）
+//     --expect-author <串> 期望的 PDF /Author（默认「亦幸和幸知」）
+//     --link-base <网址>   期望 PDF 内链接指向的发布地址（默认 https://hencter.github.io/workers-ledger/）
+//     --browser <路径|命令> 截图用的浏览器（默认自动探测；也可用 WRC_PDF_BROWSER）
+//     --no-sandbox         截图浏览器加 --no-sandbox --disable-dev-shm-usage（容器/CI）
+//     --shots <目录>       把 PDF 若干页截图（用浏览器渲染真实 PDF 页面，肉眼查豆腐块）
 //     --shot-pages 1,2,300 截图页号（默认 1,2,3）
 //     --json               以 JSON 汇总结果
 // 退出码：0 = 全部通过；1 = 有断言失败；2 = 环境或参数问题。
@@ -26,17 +29,27 @@ import { pathToFileURL } from 'node:url'
 
 const args = process.argv.slice(2)
 if (!args.length || args.includes('--help') || args.includes('-h')) {
-  console.log('用法：node tools/verify-pdf.mjs <pdf路径> [--site <目录>] [--print-html <路径>] [--shots <目录>] [--shot-pages 1,2,3] [--json]')
+  console.log('用法：node tools/verify-pdf.mjs <pdf路径> [--site <目录>] [--print-html <路径>] [--link-base <网址>] [--shots <目录>] [--shot-pages 1,2,3] [--json]')
   process.exit(args.length ? 0 : 2)
 }
 const pdfPath = args[0]
-const opt = { site: 'site/public', printHtml: null, expectTitle: '劳动权益与合规指南', expectAuthor: '劳动权益与合规指南', shots: null, shotPages: [1, 2, 3], json: false }
+const opt = {
+  site: 'site/public', printHtml: null,
+  expectTitle: '劳动者的账本', expectAuthor: '亦幸和幸知',
+  linkBase: 'https://hencter.github.io/workers-ledger/',
+  browser: process.env.WRC_PDF_BROWSER || process.env.CHROME_PATH || null,
+  noSandbox: /^(1|true|yes)$/i.test(process.env.WRC_PDF_NO_SANDBOX || ''),
+  shots: null, shotPages: [1, 2, 3], json: false,
+}
 for (let i = 1; i < args.length; i++) {
   const a = args[i]
   if (a === '--site') opt.site = args[++i]
   else if (a === '--print-html') opt.printHtml = args[++i]
   else if (a === '--expect-title') opt.expectTitle = args[++i]
   else if (a === '--expect-author') opt.expectAuthor = args[++i]
+  else if (a === '--link-base') opt.linkBase = args[++i]
+  else if (a === '--browser') opt.browser = args[++i]
+  else if (a === '--no-sandbox') opt.noSandbox = true
   else if (a === '--shots') opt.shots = args[++i]
   else if (a === '--shot-pages') opt.shotPages = args[++i].split(',').map(Number).filter((n) => n > 0)
   else if (a === '--json') opt.json = true
@@ -64,7 +77,6 @@ const objects = new Map()
   const re = /\n(\d+)\s+0\s+obj\b/g
   let m
   while ((m = re.exec(S))) {
-    const id = m[1]
     const bodyStart = m.index + m[0].length
     const endObj = S.indexOf('endobj', bodyStart)
     if (endObj === -1) continue
@@ -86,7 +98,7 @@ const objects = new Map()
       }
       stream = buf.subarray(dataStart, dataEnd)
     }
-    objects.set(id, { dict, stream })
+    objects.set(m[1], { dict, stream })
     re.lastIndex = endObj
   }
 }
@@ -107,35 +119,6 @@ const dictOf = (id) => (id != null && objects.has(String(id)) ? objects.get(Stri
 
 /* -------------------------------------------------------- PDF 字符串解码 */
 
-function decodePdfString(tok) {
-  if (tok.startsWith('<')) {
-    const hex = tok.slice(1, -1).replace(/\s+/g, '')
-    const bytes = []
-    for (let i = 0; i + 1 < hex.length; i += 2) bytes.push(parseInt(hex.slice(i, i + 2), 16))
-    return bytesToText(bytes)
-  }
-  const body = tok.slice(1, -1)
-  const bytes = []
-  for (let i = 0; i < body.length; i++) {
-    let ch = body[i]
-    if (ch === '\\') {
-      const n = body[++i]
-      if (n === 'n') bytes.push(10)
-      else if (n === 'r') bytes.push(13)
-      else if (n === 't') bytes.push(9)
-      else if (n === 'b') bytes.push(8)
-      else if (n === 'f') bytes.push(12)
-      else if (n === '\n') { /* 续行 */
-      } else if (n >= '0' && n <= '7') {
-        let oct = n
-        while (oct.length < 3 && body[i + 1] >= '0' && body[i + 1] <= '7') oct += body[++i]
-        bytes.push(parseInt(oct, 8))
-      } else bytes.push(n.charCodeAt(0))
-    } else bytes.push(ch.charCodeAt(0) & 0xff)
-  }
-  return bytesToText(bytes)
-}
-
 /** 带 BOM 的按 UTF-16BE 解，否则按 PDF 单字节处理 */
 function bytesToText(bytes) {
   if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
@@ -146,6 +129,41 @@ function bytesToText(bytes) {
   return Buffer.from(bytes).toString('latin1')
 }
 
+function decodePdfString(tok) {
+  if (tok.startsWith('<')) {
+    const hex = tok.slice(1, -1).replace(/\s+/g, '')
+    const bytes = []
+    for (let i = 0; i + 1 < hex.length; i += 2) bytes.push(parseInt(hex.slice(i, i + 2), 16))
+    return bytesToText(bytes)
+  }
+  const body = tok.slice(1, -1)
+  const bytes = []
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i]
+    if (ch === '\\') {
+      const n = body[++i]
+      if (n === 'n') bytes.push(10)
+      else if (n === 'r') bytes.push(13)
+      else if (n === 't') bytes.push(9)
+      else if (n === 'b') bytes.push(8)
+      else if (n === 'f') bytes.push(12)
+      else if (n === '\n') { /* 续行 */ }
+      else if (n >= '0' && n <= '7') {
+        let oct = n
+        while (oct.length < 3 && body[i + 1] >= '0' && body[i + 1] <= '7') oct += body[++i]
+        bytes.push(parseInt(oct, 8))
+      } else bytes.push(n.charCodeAt(0))
+    } else bytes.push(ch.charCodeAt(0) & 0xff)
+  }
+  return bytesToText(bytes)
+}
+
+function infoValue(dict, key) {
+  if (!dict) return null
+  const m = new RegExp(`/${key}\\s*(\\([^)]*\\)|<[0-9A-Fa-f\\s]*>)`).exec(dict)
+  return m ? decodePdfString(m[1]) : null
+}
+
 const infoRef = (() => {
   const trailers = [...S.matchAll(/trailer\s*<<([\s\S]*?)>>/g)]
   return trailers.length ? trailers[trailers.length - 1][1] : null
@@ -154,16 +172,16 @@ const infoDict = infoRef ? dictOf(refOf(infoRef, 'Info')) : null
 const rootId = infoRef ? refOf(infoRef, 'Root') : null
 const catalog = dictOf(rootId)
 const lang = catalog ? (/\/Lang\s*\(([^)]*)\)/.exec(catalog)?.[1] ?? null) : null
-const title = infoDict ? (/\/Title\s*(\(|<)/.exec(infoDict) ? decodePdfString(infoDict.slice(/\/Title\s*/.exec(infoDict).index + 7).match(/^(\((?:\\.|[^\\()])*\)|<[0-9A-Fa-f\s]*>)/)[1]) : null) : null
-const author = infoDict ? (/\/Author\s*(\(|<)/.exec(infoDict) ? decodePdfString(infoDict.slice(/\/Author\s*/.exec(infoDict).index + 8).match(/^(\((?:\\.|[^\\()])*\)|<[0-9A-Fa-f\s]*>)/)[1]) : null) : null
-const producer = infoDict ? (/\/Producer\s*\(([^)]*)\)/.exec(infoDict)?.[1] ?? null) : null
+const title = infoValue(infoDict, 'Title')
+const author = infoValue(infoDict, 'Author')
+const producer = infoValue(infoDict, 'Producer')
 
 /* ------------------------------------------------------------- 字体与 CMap */
 
 const cmapCache = new Map()
 function cmapFor(fontId) {
   if (cmapCache.has(fontId)) return cmapCache.get(fontId)
-  const dict = dictOf(fontId)
+  const dict = fontId != null ? dictOf(fontId) : null
   let map = null
   let twoByte = false
   if (dict) {
@@ -226,23 +244,20 @@ function pageOrder() {
     const kids = /\/Kids\s*\[([\s\S]*?)\]/.exec(dict)
     if (kids) for (const m of kids[1].matchAll(/(\d+)\s+\d+\s+R/g)) walk(m[1], depth + 1)
   }
-  const pagesId = catalog ? refOf(catalog, 'Pages') : null
-  walk(pagesId)
+  walk(catalog ? refOf(catalog, 'Pages') : null)
   return out
 }
 
 const unmapped = { count: 0 }
 function decodeShow(tok, cm) {
-  let bytes
+  let bytes = []
   if (tok.startsWith('<')) {
     const hex = tok.slice(1, -1).replace(/\s+/g, '')
-    bytes = []
     for (let i = 0; i + 1 < hex.length; i += 2) bytes.push(parseInt(hex.slice(i, i + 2), 16))
   } else {
     const body = tok.slice(1, -1)
-    bytes = []
     for (let i = 0; i < body.length; i++) {
-      let ch = body[i]
+      const ch = body[i]
       if (ch === '\\') {
         const n = body[++i]
         if (n >= '0' && n <= '7') { let o = n; while (o.length < 3 && body[i + 1] >= '0' && body[i + 1] <= '7') o += body[++i]; bytes.push(parseInt(o, 8)) }
@@ -253,12 +268,11 @@ function decodeShow(tok, cm) {
       } else bytes.push(ch.charCodeAt(0) & 0xff)
     }
   }
-  if (!cm.map) { unmapped.count += bytes.length; return '' }
+  if (!cm || !cm.map) { unmapped.count += bytes.length; return '' }
   let out = ''
   if (cm.twoByte) {
     for (let i = 0; i + 1 < bytes.length; i += 2) {
-      const code = (bytes[i] << 8) | bytes[i + 1]
-      const v = cm.map.get(code)
+      const v = cm.map.get((bytes[i] << 8) | bytes[i + 1])
       if (v === undefined) { unmapped.count++; continue }
       out += v
     }
@@ -274,18 +288,39 @@ function decodeShow(tok, cm) {
 
 const TOKEN_RE = /\/([^\s/\[\]<>()]+)\s+-?[\d.]+\s+Tf|\[((?:[^\[\]\\]|\\.)*)\]\s*TJ|(\((?:[^()\\]|\\.)*\)|<[0-9A-Fa-f\s]*>)\s*(Tj|'|")|\b(Td|TD|T\*|ET)\b/g
 
+/** 从 '<' 开始做平衡扫描取一个 <<…>> 字典（资源字典里嵌套 >> 很多，非贪婪正则会被截断） */
+function balancedDictAt(text, idx) {
+  let depth = 0
+  for (let i = idx; i < text.length - 1; i++) {
+    if (text[i] === '<' && text[i + 1] === '<') { depth++; i++ }
+    else if (text[i] === '>' && text[i + 1] === '>') { depth--; i++; if (!depth) return text.slice(idx, i + 1) }
+  }
+  return null
+}
+
+/** 取页面的 /Font 资源字典（可能在页面字典里内联，也可能挂在一个 Resources 对象上） */
+function findFontDict(dict) {
+  const inline = /\/Font\s*<</.exec(dict)
+  if (inline) return balancedDictAt(dict, inline.index + inline[0].length - 2)
+  const rId = refOf(dict, 'Resources')
+  if (rId) {
+    const rd = dictOf(rId)
+    if (rd) {
+      const m = /\/Font\s*<</.exec(rd)
+      if (m) return balancedDictAt(rd, m.index + m[0].length - 2)
+      const fId = refOf(rd, 'Font')
+      if (fId) return dictOf(fId)
+    }
+  }
+  const fId = refOf(dict, 'Font')
+  return fId ? dictOf(fId) : null
+}
+
 function pageText(pageId) {
   const dict = dictOf(pageId)
-  let resDict = /\/Resources\s*<<([\s\S]*?)>>/.exec(dict)?.[1] ?? null
-  if (!resDict) {
-    const rId = refOf(dict, 'Resources')
-    if (rId) resDict = dictOf(rId)
-  }
   const fontMap = new Map()
-  if (resDict) {
-    const fontDict = /\/Font\s*<<([\s\S]*?)>>/.exec(resDict)?.[1] ?? null
-    if (fontDict) for (const m of fontDict.matchAll(/\/([^\s/]+)\s+(\d+)\s+\d+\s+R/g)) fontMap.set(m[1], m[2])
-  }
+  const fontDict = findFontDict(dict)
+  if (fontDict) for (const m of fontDict.matchAll(/\/([^\s/]+)\s+(\d+)\s+\d+\s+R/g)) fontMap.set(m[1], m[2])
   const contents = []
   const single = refOf(dict, 'Contents')
   if (single) contents.push(single)
@@ -302,11 +337,11 @@ function pageText(pageId) {
     for (const m of content.matchAll(TOKEN_RE)) {
       if (m[1]) { cur = cmapFor(fontMap.get(m[1])); lastWasText = false; continue }
       if (m[2] !== undefined) {
-        for (const t of m[2].matchAll(/(\((?:[^()\\]|\\.)*\)|<[0-9A-Fa-f\s]*>)/g)) text += decodeShow(t[1], cur || { map: null })
+        for (const t of m[2].matchAll(/(\((?:[^()\\]|\\.)*\)|<[0-9A-Fa-f\s]*>)/g)) text += decodeShow(t[1], cur)
         lastWasText = true
         continue
       }
-      if (m[3]) { text += decodeShow(m[3], cur || { map: null }); lastWasText = true; continue }
+      if (m[3]) { text += decodeShow(m[3], cur); lastWasText = true; continue }
       if (m[5] && lastWasText) { text += '\n'; lastWasText = false }
     }
   }
@@ -324,7 +359,7 @@ const cjk = (fullText.match(/[\u3400-\u4dbf\u4e00-\u9fff]/g) || []).length
 const sizeMB = buf.length / 1024 / 1024
 
 console.log(`\n=== 核实 ${pdfPath}`)
-console.log(`字节 ${buf.length}（${sizeMB.toFixed(2)} MB）· 对象 ${objects.size} 个 · 页面 ${pages.length} 页 · 提取文字 ${fullText.length} 字符（中日韩汉字 ${cjk} 个）`)
+console.log(`字节 ${buf.length}（${sizeMB.toFixed(2)} MB）· 对象 ${objects.size} 个 · 页面 ${pages.length} 页 · 提取文字 ${fullText.length} 字符（汉字 ${cjk} 个）`)
 console.log(`/Title ${JSON.stringify(title)} · /Author ${JSON.stringify(author)} · /Lang ${JSON.stringify(lang)} · /Producer ${JSON.stringify(producer)}`)
 if (!opt.json) console.log('\n--- 断言 ---')
 
@@ -332,14 +367,13 @@ add('文件大小不是空壳（≥ 1 MB）', sizeMB >= 1, `${sizeMB.toFixed(2)}
 add('页数与条目规模相称（≥ 100 页）', pages.length >= 100, `${pages.length} 页`)
 add('提取到大量汉字（≥ 50000）', cjk >= 50000, `${cjk} 个汉字`)
 add('没有大量无法还原的字符', unmapped.count < Math.max(2000, fullText.length * 0.05), `未映射字符 ${unmapped.count} 个 / 共 ${fullText.length}`)
-add(`/Title 为中文书名`, noWs(String(title || '')) === noWs(opt.expectTitle), JSON.stringify(title))
-add(`/Author 为中文署名`, noWs(String(author || '')) === noWs(opt.expectAuthor), JSON.stringify(author))
+add('/Title 为中文书名', noWs(String(title || '')) === noWs(opt.expectTitle), JSON.stringify(title))
+add('/Author 为指定署名', noWs(String(author || '')) === noWs(opt.expectAuthor), JSON.stringify(author))
 add('/Lang 声明 zh-CN', String(lang || '') === 'zh-CN', JSON.stringify(lang))
 
 // 书签（Chrome 的 generateDocumentOutline）
 let outlineCount = 0
 {
-  const outlinesId = catalog ? refOf(catalog, 'Outlines') : null
   const seen = new Set()
   const walk = (id) => {
     if (!id || seen.has(id)) return
@@ -360,9 +394,17 @@ let outlineCount = 0
       }
     }
   }
-  walk(outlinesId)
+  walk(catalog ? refOf(catalog, 'Outlines') : null)
 }
 add('含 PDF 书签（大纲）', outlineCount > 0, `${outlineCount} 个书签节点`)
+
+// 链接：PDF 里的 /URI 注解应当指向公开发布地址
+const uris = [...S.matchAll(/\/URI\s*\(([^)]*)\)/g)].map((m) => m[1])
+const linkBase = opt.linkBase.endsWith('/') ? opt.linkBase : `${opt.linkBase}/`
+const offBase = uris.filter((u) => !u.startsWith(linkBase))
+add('PDF 内含可点链接注解', uris.length > 0, `${uris.length} 个 /URI 注解`)
+add(`链接都指向发布地址 ${linkBase}`, uris.length > 0 && offBase.length === 0,
+  offBase.length ? `有 ${offBase.length} 个不是，例如 ${offBase.slice(0, 2).join('、')}` : `例如 ${uris[0] || '（无）'}`)
 
 // 抽查：三处指定条目正文
 const spots = [
@@ -374,15 +416,22 @@ for (const [name, phrase] of spots) {
   add(`抽查命中 ${name}`, fullNoWs.includes(noWs(phrase)), `「${phrase}」`)
 }
 
-// 全量核对：entries.json 里每一条的标题都应在 PDF 里
+// 全量核对：entries.json 里每一条的标题与「说人话」正文都应在 PDF 里。
+// 标题在目录页也有一份，所以「说人话」才真正证明条目正文进了 PDF。
 let perEntry = null
 {
   const ep = join(opt.site, 'entries.json')
   if (existsSync(ep)) {
     const list = JSON.parse(readFileSync(ep, 'utf8')).entries || []
-    const missing = list.filter((e) => !fullNoWs.includes(noWs(String(e.标题 || ''))))
-    perEntry = { total: list.length, missing: missing.length, sample: missing.slice(0, 5).map((e) => `${e.节号}.${e.条号} ${e.标题}`) }
-    add(`全部条目标题都在 PDF 里（${list.length} 条）`, missing.length === 0, missing.length ? `缺 ${missing.length} 条，例如：${perEntry.sample.join('；')}` : '一条不缺')
+    const missTitle = list.filter((e) => !fullNoWs.includes(noWs(String(e.标题 || ''))))
+    const leaded = list.filter((e) => noWs(String(e.说人话 || '')).length >= 8)
+    const missLead = leaded.filter((e) => !fullNoWs.includes(noWs(String(e.说人话)).slice(0, 12)))
+    perEntry = {
+      total: list.length, missTitle: missTitle.length, leadChecked: leaded.length, missLead: missLead.length,
+      sample: missLead.slice(0, 3).map((e) => `${e.节号}.${e.条号}`),
+    }
+    add(`全部条目标题都在 PDF 里（${list.length} 条）`, missTitle.length === 0, missTitle.length ? `缺 ${missTitle.length} 条，例如 ${missTitle.slice(0, 3).map((e) => `${e.节号}.${e.条号} ${e.标题}`).join('；')}` : '一条不缺')
+    add(`全部条目的正文片段都在 PDF 里（${leaded.length} 条「说人话」首 12 字）`, missLead.length === 0, missLead.length ? `缺 ${missLead.length} 条，例如 ${perEntry.sample.join('、')}` : '一条不缺')
   }
 }
 
@@ -401,35 +450,39 @@ if (opt.printHtml && existsSync(opt.printHtml)) {
   add('打印源 HTML 里确实带着这些元素（否则「PDF 里没有」不成为证据）', inSource.length === 3, `源里有：${inSource.join('、')}`)
 }
 
-// 分节与目录页存在
-add('目录页覆盖全部节', (fullText.match(/第 \d+ 节 · /g) || []).length >= 10, `${(fullText.match(/第 \d+ 节 · /g) || []).length} 个节标题`)
-
-// 页脚页码
-add('页脚含页码', /第\s*\d+\s*页/.test(fullText) || /第.*页.*共.*页/.test(noWs(fullText)) === false ? /第\s*\d+\s*页/.test(fullText) : false, (fullText.match(/第\s*\d+\s*页/g) || []).slice(0, 3).join(' '))
+// 封面署名、目录、页脚
+add('封面/目录含署名「亦幸和幸知」', fullNoWs.includes(noWs(opt.expectAuthor)), `出现 ${(fullText.match(new RegExp(opt.expectAuthor, 'g')) || []).length} 次`)
+add('目录页覆盖全部节（≥ 10 个节标题）', (fullText.match(/第 \d+ 节 · /g) || []).length >= 10, `${(fullText.match(/第 \d+ 节 · /g) || []).length} 个节标题`)
+add('页脚含页码', /第\s*\d+\s*页/.test(fullText), (fullText.match(/第\s*\d+\s*页/g) || []).slice(0, 2).join(' '))
 
 // 空白页统计
 const shortPages = pageTexts.map((t, i) => [i + 1, t.replace(/\s+/g, '').length]).filter(([, n]) => n < 20)
-add('没有大量空白页（正文少于 20 字的页 < 5%）', shortPages.length < pages.length * 0.05, `${shortPages.length}/${pages.length} 页，例如第 ${shortPages.slice(0, 5).map(([p]) => p).join('、')} 页`)
+add('没有大量空白页（正文少于 20 字的页 < 5%）', shortPages.length < pages.length * 0.05, `${shortPages.length}/${pages.length} 页${shortPages.length ? `，例如第 ${shortPages.slice(0, 5).map(([p]) => p).join('、')} 页` : ''}`)
 
 /* ------------------------------------------------------------------ 截图 */
 
-let shotFiles = []
+const shotFiles = []
 if (opt.shots) {
-  const BROWSERS = [
+  const CANDIDATES = [
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
     'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
     'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
     'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
+    '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium-browser', '/usr/bin/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   ]
-  const exe = BROWSERS.find((p) => existsSync(p))
-  if (!exe) {
-    add('用浏览器渲染 PDF 页面截图', false, '找不到 Chrome/Edge')
-  } else {
+  const exe = opt.browser && (opt.browser.includes('/') || opt.browser.includes('\\'))
+    ? (existsSync(opt.browser) ? opt.browser : null)
+    : (opt.browser || CANDIDATES.find((p) => existsSync(p)))
+  if (!exe) add('用浏览器渲染 PDF 页面截图', false, '找不到 Chrome/Edge（可用 --browser 指定）')
+  else {
     mkdirSync(opt.shots, { recursive: true })
     const port = 9390 + (process.pid % 400)
     const profile = mkdtempSync(join(tmpdir(), 'wrc-verify-'))
-    const proc = spawn(exe, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
-      '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' })
+    const flags = ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`,
+      '--no-first-run', '--no-default-browser-check', '--disable-extensions', '--hide-scrollbars']
+    if (opt.noSandbox) flags.push('--no-sandbox', '--disable-dev-shm-usage')
+    const proc = spawn(exe, [...flags, 'about:blank'], { stdio: 'ignore' })
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
     try {
       let wsUrl = null
@@ -452,7 +505,7 @@ if (opt.shots) {
       const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pending.set(i, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id: i, method, params })) })
       await send('Page.enable')
       await send('Emulation.setDeviceMetricsOverride', { width: 900, height: 1250, deviceScaleFactor: 1, mobile: false })
-      const fileUrl = pathToFileURL(pdfPath).href
+      const fileUrl = pathToFileURL(resolve(pdfPath)).href
       for (const p of opt.shotPages) {
         await send('Page.navigate', { url: `${fileUrl}#page=${p}&zoom=100` })
         await sleep(2500)
@@ -476,13 +529,13 @@ if (opt.shots) {
 const failed = checks.filter((c) => !c.ok)
 const summary = {
   pdf: pdfPath, bytes: buf.length, pages: pages.length, textChars: fullText.length, cjk,
-  unmapped: unmapped.count, title, author, lang, producer, outlineCount, perEntry, shots: shotFiles,
-  passed: checks.length - failed.length, total: checks.length, failed: failed.map((f) => f.name),
+  unmapped: unmapped.count, title, author, lang, producer, outlineCount, uriCount: uris.length, uris: uris.slice(0, 3),
+  perEntry, shots: shotFiles, passed: checks.length - failed.length, total: checks.length, failed: failed.map((f) => f.name),
 }
 if (opt.json) console.log(JSON.stringify(summary, null, 2))
 else {
   console.log(`\n=== 结果：${checks.length - failed.length}/${checks.length} 项通过`)
   if (failed.length) console.log(`未通过：${failed.map((f) => f.name).join('、')}`)
-  console.log(`\n文字样本（前 220 字）：\n${fullText.replace(/\s+/g, ' ').slice(0, 220)}`)
+  console.log(`\n文字样本（前 260 字）：\n${fullText.replace(/\s+/g, ' ').slice(0, 260)}`)
 }
 process.exit(failed.length ? 1 : 0)
