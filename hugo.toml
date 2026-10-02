@@ -1,0 +1,16 @@
+# 这个文件**不是站点的配置**。站点配置在 site/hugo.toml，那是唯一真相源。
+#
+# 它存在只为一件事：腾讯 EdgeOne Pages 通过扫描「项目根目录」下的
+# hugo.toml / hugo.yaml / hugo.json / config.toml 等文件来判断项目是不是 Hugo 站点
+# （其 Hugo 文档「项目要求」一节明写）。本站点在 site/ 子目录里，根目录没有这些
+# 文件，EdgeOne 因此没有把它识别为 Hugo 项目——现场观察到的现象是构建日志一直
+# 显示预装的 Hugo v0.147.5，`edgeone.json` 里的 hugoVersion 从未生效；
+# 而 0.147.5 缺 .Locale 字段与 css.Build 等 0.158+ 的 API，构建必然失败。
+#
+# 构建由 edgeone.json 的 buildCommand 明确指定 `--source site`，
+# 所以这里不重复任何站点设置：改站点配置请改 site/hugo.toml。
+# 本地构建照旧：cd site && hugo --minify（工作目录是 site/，不会读到这个文件）。
+#
+# 已验证：根目录存在此文件时，`hugo --source site` 构建出的是真实站点
+# （344 页、标题「劳动者的账本」、canonical 与 CNAME 均正确），未被本文件影响。
+title = '劳动者的账本（仅供平台检测，不是站点配置）'
