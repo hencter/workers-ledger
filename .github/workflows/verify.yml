@@ -86,5 +86,12 @@ jobs:
           node-version: '24'
       # 用 --check：个人信息类硬命中即失败；「需语境档」只报待人工判断，不阻塞。
       # 想把需语境档也变成门禁，加 --strict。
-      - name: 运行脱敏扫描
-        run: node tools/check-desensitize.mjs --check --summary "$GITHUB_STEP_SUMMARY"
+      #
+      # 扫描范围扩到全仓库，不只是正文：本站点、AI skill、工具脚本与自测夹具都会发布，
+      # 任何一处带上真实个人信息都是泄露。自测夹具里是故意造的虚构泄露特征，
+      # 脚本默认跳过并在汇总里报出跳过数量——所以这里不需要额外排除参数。
+      - name: 运行脱敏扫描（全仓库）
+        run: |
+          node tools/check-desensitize.mjs --check \
+            --dir . \
+            --summary "$GITHUB_STEP_SUMMARY"

@@ -368,6 +368,7 @@ function parseArgs(argv) {
     if (a === '--check') opt.check = true
     else if (a === '--strict') opt.strict = true
     else if (a === '--include-quoted') opt.includeQuoted = true
+    else if (a === '--include-fixtures') opt.includeFixtures = true
     else if (a === '--help' || a === '-h') opt.help = true
     else if (a === '--root') opt.root = path.resolve(argv[++i] ?? '.')
     else if (a === '--dir') opt.dirs.push(argv[++i] ?? '')
@@ -387,6 +388,7 @@ const USAGE = `脱敏扫描 —— 用法：
   node tools/check-desensitize.mjs --root <目录>       指定仓库根目录
   node tools/check-desensitize.mjs --dir <目录>        追加扫描目录（可重复，默认 book docs sources）
   node tools/check-desensitize.mjs --include-quoted   连引用块与代码块一起扫
+  node tools/check-desensitize.mjs --include-fixtures 连自测夹具一起扫（夹具里是故意造的虚构泄露特征）
   node tools/check-desensitize.mjs --summary <文件>    汇总追加写入该文件
 退出码：0 通过 / 1 有硬命中（或 --strict 下含需语境档）/ 2 运行环境错误`
 
@@ -403,6 +405,7 @@ async function main() {
   const issues = []
   const scanned = []
   const missing = []
+  const skippedFixtures = []
 
   console.log('脱敏扫描 —— 依据：docs/条目规范.md「脱敏硬规则」')
   console.log(`仓库根目录：${opt.root}`)
@@ -424,6 +427,17 @@ async function main() {
     } catch {
       missing.push(d)
       continue
+    }
+    // 自测夹具里放的就是故意造出来的泄露特征（虚构号码），用来验证本扫描器会命中。
+    // 把它们当泄露报出来只会制造噪声，还会掩盖真实命中——而噪声最终会让人不再看这份报告。
+    // 默认跳过；要看夹具本身是否仍能触发规则，用 --include-fixtures。
+    if (!opt.includeFixtures) {
+      const kept = []
+      for (const f of files) {
+        if (/[\\/]selftest-fixtures[\\/]/.test(f)) skippedFixtures.push(f)
+        else kept.push(f)
+      }
+      files = kept
     }
     for (const f of files) {
       const rel = path.relative(opt.root, f).split(path.sep).join('/')
@@ -467,6 +481,9 @@ async function main() {
   console.log(`文件 ${scanned.length} 个，共 ${scanned.reduce((s, x) => s + x.lines, 0)} 行`)
   console.log(`硬命中 ${errCount} 处，需语境档 ${warnCount} 处，提示 ${infoCount} 处`)
   console.log(`豁免行 ${totalWaived} 行；因引用块／代码块跳过 ${totalSkipped} 行`)
+  if (skippedFixtures.length) {
+    console.log(`自测夹具跳过 ${skippedFixtures.length} 个文件（内含故意造的虚构泄露特征；--include-fixtures 可一并扫）`)
+  }
 
   const summaryLines = [
     '## 脱敏扫描',
@@ -474,6 +491,7 @@ async function main() {
     `- 扫描范围：${dirs.join('、')}；文件 ${scanned.length} 个`,
     `- 硬命中 ${errCount} 处，需语境档 ${warnCount} 处，提示 ${infoCount} 处`,
     `- 豁免行 ${totalWaived} 行；因引用块／代码块跳过 ${totalSkipped} 行`,
+    ...(skippedFixtures.length ? [`- 自测夹具跳过 ${skippedFixtures.length} 个文件`] : []),
     '',
   ]
   if (issues.length) {
