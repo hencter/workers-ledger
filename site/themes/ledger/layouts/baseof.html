@@ -1,5 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{ partial "locale.html" . }}" dir="{{ or site.Language.Direction `ltr` }}"
+{{- /* dir 直接写 ltr，不读 site.Language.Direction：
+       本书只有简体中文一种语言，书写方向恒为从左到右，没有取值的必要。
+       而 language 对象的方向字段在 Hugo 0.158 前后都处在弃用搬迁中
+       （0.158 起 LanguageDirection 弃用），旧版本还可能直接抛错——
+       用一个静态字面量换掉它，既少一处版本风险，也少一次模板求值。 */ -}}
+<html lang="{{ partial "locale.html" . }}" dir="ltr"
       data-base="{{ site.Home.RelPermalink }}"
       data-stale-days="{{ site.Params.staleDays | default 180 }}">
 <head>

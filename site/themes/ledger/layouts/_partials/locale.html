@@ -1,17 +1,13 @@
-{{- /* 返回当前站点的语言标识，跨 Hugo 版本可用。
-       为什么需要它：`.Locale` 是 0.158 才引入的（旧版只有 `.Lang`），
-       而本项目在 0.167 上开发、却撞到一个 Hugo 0.147.5 的构建环境，
-       报错 `can't evaluate field Locale in type *langs.Language`。
-       实测（Hugo 0.167）：`.Locale` = "zh-CN"、`.Lang` = "en" —— 两者不等价，
-       所以不能简单换成 .Lang，否则 <html lang> 与 og:locale 会退化成 en。
-       取值优先级：.Locale（0.158+，正确值）→ .Lang（旧版兜底）。
-       既保住新版本的正确输出，也兼容旧版本构建。 */ -}}
+{{- /* 返回站点的语言标识（如 zh-CN），跨 Hugo 版本可用。
+       为什么不能碰 site.Language 对象：在 Hugo < 0.158 上访问 `.Locale` 会**直接抛错**
+       （can't evaluate field Locale in type *langs.Language），
+       连 `with site.Language.Locale` 都拦不住——模板求值失败发生在 with 判断之前。
+       本项目第一版兼容写法就栽在这里，把只坏一个渲染点的故障扩大成了 partial 内部报错。
+       所以改成**完全绕开语言对象的字段**，改读配置：hugo.toml 的 params.locale
+       是普通字符串参数，任何 Hugo 版本都读得到，语义也更明确。
+       兜底顺序：params.locale（本项目配置）→ 参数 locale → 常量 zh-CN。 */ -}}
 {{- $loc := "zh-CN" -}}
-{{- with site.Language.Locale -}}
+{{- with site.Params.locale -}}
   {{- $loc = . -}}
-{{- else -}}
-  {{- with site.Language.Lang -}}
-    {{- $loc = . -}}
-  {{- end -}}
 {{- end -}}
 {{- return $loc -}}
