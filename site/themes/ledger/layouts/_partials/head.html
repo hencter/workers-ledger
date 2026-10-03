@@ -15,6 +15,13 @@
 <meta name="description" content="{{ $desc }}">
 <meta name="author" content="{{ site.Title }}">
 
+{{- /* 必应站长工具（Bing Webmaster Tools）站点验证。
+       写在 head.html 而不是只写首页：Bing 的验证要求是「首页 head 内、<body> 之前」，
+       全站输出天然满足，也免了为首页单独开一个模板分支。
+       **验证成功后不要删** —— Bing 会定期复查，删掉即掉验证。
+       本站另用 robots.txt 的 Sitemap 行与 llms.txt 做收录与 GEO 声明。 */ -}}
+<meta name="msvalidate.01" content="DE3B203227A8CF344D0A0F8E02B192CB">
+
 {{- /* 非 production 一律 noindex，避免预览站被收录 */ -}}
 {{- if hugo.IsProduction }}
 <meta name="robots" content="index, follow">
