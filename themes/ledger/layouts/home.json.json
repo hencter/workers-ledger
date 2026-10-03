@@ -1,59 +1,15 @@
-{{- /* 首页的 JSON 输出：把 site/data/entries.json 归一化成前端检索索引。
-       归一化只在这里和 layouts/_partials/logic/ 下做一次，条目页徽章用同一套逻辑，
-       所以「主张强度」「举证难度」「效力位阶」在不同页面上的分档不会打架。
-       原始条目仍是 book/ 下的正文，这份 JSON 是派生产物，不反向维护。 */ -}}
-{{- $raw := hugo.Data.entries | default slice -}}
-{{- $home := site.Home.RelPermalink -}}
-{{- /* 链接一律用 Hugo 自己解析出的 .RelPermalink：
-       生成脚本写的「路径」是按原文件名拼的，而 Hugo 会剔掉标题里的中文标点
-       （例如「01-加班费三档：平日…」实际发布成「01-加班费三档平日…」），
-       照抄脚本的路径会 404。这里按 节号.条号 建索引，取 Hugo 的真实地址。 */ -}}
-{{- $urls := dict -}}
-{{- range site.RegularPages -}}
-  {{- $urls = merge $urls (dict (printf "%v.%v" .Params.节号 .Params.条号) .RelPermalink) -}}
-{{- end -}}
-{{- $list := slice -}}
-{{- range $e := $raw -}}
-  {{- $claimRaw := index $e "主张强度" | default "" -}}
-  {{- $claim := partialCached "logic/claim.html" (dict "v" $claimRaw) (printf "claim|%s" $claimRaw) -}}
-  {{- $proofRaw := index $e "举证难度" | default "" -}}
-  {{- $proof := partialCached "logic/proof.html" (dict "v" $proofRaw) (printf "proof|%s" $proofRaw) -}}
-  {{- $proofParts := split $proofRaw "——" -}}
-  {{- $proofRest := "" -}}
-  {{- if gt (len $proofParts) 1 -}}{{- $proofRest = delimit (after 1 $proofParts) "——" -}}{{- end -}}
-  {{- $rankRaw := index $e "效力位阶" | default "" -}}
-  {{- $rank := partialCached "logic/rank.html" (dict "v" $rankRaw) (printf "rank|%s" $rankRaw) -}}
-  {{- $ranks := partialCached "logic/ranks.html" (dict "v" $rankRaw) (printf "ranks|%s" $rankRaw) -}}
-  {{- $path := index $e "路径" | default "" -}}
-  {{- $url := index $urls (printf "%v.%v" (index $e "节号") (index $e "条号")) | default "" -}}
-  {{- if not $url -}}
-    {{- $url = printf "%s%s" $home (strings.TrimPrefix "/" $path) -}}
-  {{- end -}}
-  {{- $list = $list | append (dict
-    "节号" (index $e "节号")
-    "节名" (index $e "节名")
-    "条号" (index $e "条号")
-    "标题" (index $e "标题")
-    "url" $url
-    "说人话" (index $e "说人话")
-    "适用" (index $e "适用")
-    "成本" (index $e "成本")
-    "收益" (index $e "收益")
-    "依据" (index $e "依据")
-    "地域" (index $e "地域")
-    "时效" (index $e "时效")
-    "备注" (index $e "备注")
-    "主张强度" $claim
-    "主张强度原文" $claimRaw
-    "举证难度" $proof
-    "举证难度说明" $proofRest
-    "效力位阶" $rank
-    "效力位阶原文" $rankRaw
-    "效力位阶全部" $ranks
-    "核对日期" (index $e "核对日期")
-    "成本标签" (index $e "成本标签")
-  ) -}}
-{{- end -}}
+{{- /* 首页的 JSON 输出：把 site/data/entries.json 归一化成前端检索索引（/entries.json）。
+
+       归一化逻辑在 layouts/_partials/json/条目索引.html 里，**只有一份**：
+       分节的 /NN-节名/entries.json 调的是同一个 partial，所以两边字段一致、
+       不会各写一套然后悄悄漂移。条目页徽章用 layouts/_partials/logic/ 下同一批档位函数。
+       原始条目仍是 book/ 下的正文，这份 JSON 是派生产物，不反向维护。
+
+       本文件只负责「整站」这一层：套上 generated / count / staleDays 外壳。
+
+       ⚠ 这是给**前端检索**用的，体量 846 KB，不要整份读进模型上下文。
+       AI 云端取数请用节点端点 /NN-节名/entries.json（每节 24–84 KB）。 */ -}}
+{{- $list := partial "json/条目索引.html" (hugo.Data.entries | default slice) -}}
 {{- dict
   "generated" (now.Format "2006-01-02T15:04:05Z07:00")
   "count" (len $list)

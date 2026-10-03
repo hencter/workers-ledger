@@ -2,7 +2,8 @@
 /**
  * geo-check.mjs —— GEO（面向检索式 AI 与聚合器）与授权声明的断言
  *
- *   node tools/checks/geo-check.mjs
+ *   node tools/checks/geo-check.mjs                  断言 public/
+ *   node tools/checks/geo-check.mjs --dir <目录>      指定产物目录
  *
  * ## 为什么单独有一道
  *
@@ -26,10 +27,17 @@ import { hugoConfig } from '../lib/发布地址.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..', '..')
-const PUBLIC = join(ROOT, 'public')
+
+// 产物目录可用 --dir 指定，与 render-check / semantic-check 对齐。
+// 这条以前是写死 public/ 的：本机有 hugo server 在跑时 public/ 只能有一个写者，
+// 生产构建会被 build-prod.mjs 拒绝，那时就没法在这台机器上对临时产物跑同一批断言——
+// 结果是「geo-check 没跑」，而被当成「跑过了」。能指定目录之后，这种情况有出路。
+const argv = process.argv.slice(2)
+const argOf = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] ? argv[i + 1] : d }
+const PUBLIC = resolve(argOf('--dir', join(ROOT, 'public')))
 
 if (!existsSync(PUBLIC)) {
-  console.error('[环境错误] 找不到 public，先跑 node tools/build-prod.mjs')
+  console.error(`[环境错误] 找不到产物目录：${PUBLIC}\n先跑 node tools/build-prod.mjs`)
   process.exit(2)
 }
 
@@ -240,6 +248,47 @@ if (cfg && cfg.repo) {
   add('纠错入口覆盖全部内容页', 链接页数 >= 300, `只有 ${链接页数} 个页面有纠错按钮`)
   add('纠错入口的预填标题与结构完整', 预填完整 >= 300,
     `${链接页数} 个按钮里只有 ${预填完整} 个带完整预填——检查 partials/纠错链接.html 与 site-config.html 的 issueURL`)
+}
+
+// ---------------------------------------------------------------------------
+// 7) 节级机器可读索引 /NN-节名/entries.json（2026-10-04 新增）
+//
+//    为什么值得断言：它是「agent 抓一节就够」这条**云端取数路径的唯一支点**。
+//    删掉 [outputs] 里的 JSON 或 layouts/section.json.json 时，Hugo 一条错都不报，
+//    端点静默消失，而 llms.txt 仍在指引别人去抓它——又一处死链指引。
+//    同时核对它与 /entries.json **字段一致**：两处各写一套归一化正是漂移的起点
+//    （第一版就踩了：分节那份输出 front matter 原文，整站那份输出归一化档位，
+//      同一个「主张强度」在两处含义不同）。
+// ---------------------------------------------------------------------------
+{
+  const rootIndex = JSON.parse(readFileSync(join(PUBLIC, 'entries.json'), 'utf8'))
+  const bySection = new Map()
+  for (const e of rootIndex.entries) bySection.set(e.节号, (bySection.get(e.节号) || 0) + 1)
+  const rootFields = Object.keys(rootIndex.entries[0])
+
+  const found = []
+  const countBad = []
+  const fieldBad = []
+  for (const d of readdirSync(PUBLIC, { withFileTypes: true })) {
+    if (!d.isDirectory()) continue
+    const f = join(PUBLIC, d.name, 'entries.json')
+    if (!existsSync(f)) continue
+    let j
+    try { j = JSON.parse(readFileSync(f, 'utf8')) } catch { countBad.push(`${d.name}：解析失败`); continue }
+    if (!j.条数) continue                     // 授权、求助渠道这类独立页输出空数组，跳过
+    found.push(j.节号)
+    if (j.条数 !== bySection.get(j.节号)) {
+      countBad.push(`${d.name}：${j.条数} 条，整站索引里是 ${bySection.get(j.节号)} 条`)
+    }
+    for (const e of j.条目) {
+      for (const k of rootFields) if (e[k] === undefined) fieldBad.push(`${d.name} 第 ${e.条号} 条缺「${k}」`)
+      if (!e.url) fieldBad.push(`${d.name} 第 ${e.条号} 条缺 url`)
+    }
+  }
+  add('节级索引覆盖全部节', found.length === bySection.size,
+    `整站索引有 ${bySection.size} 节，产物里只有 ${found.length} 份节级 entries.json`)
+  add('节级索引条数与整站一致', countBad.length === 0, countBad.slice(0, 3).join('；'))
+  add('节级索引字段与整站一致', fieldBad.length === 0, fieldBad.slice(0, 3).join('；'))
 }
 
 // ---------------------------------------------------------------------------

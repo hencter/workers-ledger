@@ -88,10 +88,15 @@ theme = 'ledger'
   isHTML = false
   noUgly = true
 
-# 首页除 HTML 与 JSON 检索索引外，再多输出一份 llms.txt
+# 输出格式的挂载点。
+#
+# **section 也输出 JSON（2026-10-04 加）**：给「云端取数」的 AI agent 一个体量可控的入口，
+# 产物是 /NN-节名/entries.json（每节约 30–80 KB）。没有这一项时，agent 只能抓 846 KB 的
+# 整站 /entries.json 或 167 KB 起跳的条目页 HTML —— 两种都太贵，实测数字见
+# layouts/section.json.json 的注释。模板改了要跑 tools/checks/geo-check.mjs（它守这个端点）。
 [outputs]
   home = ["HTML", "JSON", "llmstxt"]
-  section = ["HTML"]
+  section = ["HTML", "JSON"]
 
 [frontmatter]
   lastmod = [':git', 'lastmod', 'date']

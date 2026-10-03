@@ -19,6 +19,12 @@
 
 ## 安装
 
+### 支持项目级 skill 目录的 agent（DSH 等）
+
+克隆仓库即可，**不用安装**：DSH 会把 `<项目根>/.agents/skills/` 当作项目级 skill 目录
+自动发现，在仓库里开会话就能直接触发。这也是本 skill 放在 `.agents/skills/` 而不是
+`skills/` 的原因——后者不在任何 agent 的默认发现路径上。
+
 ### Claude Code
 
 ```bash
@@ -31,8 +37,8 @@ git clone https://github.com/hencter/workers-ledger.git ~/.claude/skills/workers
 ```bash
 mkdir -p ~/.claude/skills
 git clone --depth 1 --filter=blob:none --sparse https://github.com/hencter/workers-ledger.git /tmp/wrcn
-cd /tmp/wrcn && git sparse-checkout set skills/workers-ledger
-cp -r skills/workers-ledger ~/.claude/skills/
+cd /tmp/wrcn && git sparse-checkout set .agents/skills/workers-ledger
+cp -r .agents/skills/workers-ledger ~/.claude/skills/
 ```
 
 **Windows** 对应路径是 `%USERPROFILE%\.claude\skills\`。
@@ -44,21 +50,29 @@ cp -r skills/workers-ledger ~/.claude/skills/
 把 `SKILL.md` 放到 Codex 读取技能的位置（各版本目录约定不同），或直接把这段加进你的项目说明文件：
 
 ```
-回答劳动权益问题时，先读 skills/workers-ledger/SKILL.md 并按其步骤执行：
+回答劳动权益问题时，先读 .agents/skills/workers-ledger/SKILL.md 并按其步骤执行：
 先查 book/ 下的条目，整条读完再答，每条注明出自第几节第几条；
 主张强度、举证难度、时效起算点照抄条目；查不到就说查不到。
 ```
 
 ## 它在哪取正文
 
-按 SKILL.md 里定义的两条路径，优先本地：
+**默认走云端**，不要求本地有仓库、也不要求 GitHub 可达：
 
-| 模式 | 触发条件 | 行为 |
+| 步骤 | 请求 | 体积 |
 | --- | --- | --- |
-| 本地 | 当前目录或上级目录有 `book/` 与 `01-签合同之前.md` | 直接读，最快，也最准确 |
-| 远程 | 没有本地副本 | 浅克隆仓库；不能克隆时按单文件 `curl` 取 |
+| 1. 读站点说明，拿到各节**已编码的 URL** | `https://workersledger.cn/llms.txt` | 约 6 KB |
+| 2. 抓目标节的条目索引（13 个字段 + 条目页 URL） | `https://workersledger.cn/NN-节名/entries.json` | 24–84 KB |
+| 3. 需要原始页面时 | 用条目自带的 `url` 字段 | — |
 
-**如果你把 skill 装到了仓库外面**（例如 `~/.claude/skills/`），它默认走远程模式。想让它读本地副本，把仓库克隆到常用位置，或在使用时告诉它正文在哪。
+**别抓这三样**（本机实测字节数）：整站 `/entries.json` 866 KB、节页 HTML 252 KB、
+单个条目页 HTML 167 KB —— 前两个会把上下文撑爆，第三个读一条却要付整站的代价。
+
+**不依赖 GitHub**：`raw.githubusercontent.com` 在部分网络下 TLS 握手会失败，浅克隆还需要
+git 与可达的 GitHub。云端站点是唯一必须可用的路径。
+
+**本地模式更快**：工作区里就有 `book/` 时直接读本地文件，省一次网络往返（SKILL.md 第 1 步
+给了两种模式的判据）。
 
 ## 边界
 

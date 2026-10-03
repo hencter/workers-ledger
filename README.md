@@ -144,9 +144,11 @@ book/*.md  ──[tools/build-site.mjs]──▶  content/**   （Hugo 内容页
 
 ## 用 AI 照书回答
 
-仓库带了一个 skill（[skills/work-rights-cn](skills/work-rights-cn/)），Claude Code 和 Codex 都能装。装上直接问「被裁了能拿多少」「工伤认定过期了还有救吗」，它先查条目再整条读完，再按主张强度、举证难度、时效组织回答，注明出自第几节第几条。**查不到就说查不到，不凭记忆编法条号。**
+仓库带了一个 skill（[.agents/skills/workers-ledger](.agents/skills/workers-ledger/)），Claude Code、Codex 都能装；**在本仓库里更省事：DSH 会把 `<项目根>/.agents/skills/` 当作项目级 skill 目录自动发现**，不用安装也能用。装上直接问「被裁了能拿多少」「工伤认定过期了还有救吗」，它先查条目再整条读完，再按主张强度、举证难度、时效组织回答，注明出自第几节第几条。**查不到就说查不到，不凭记忆编法条号。**
 
 它和普通对话的区别在于：同样一句「法律支持你」，背后可能是「有条文、有强制通道、证据好取」，也可能是「有条文、但各地口径不一、证据离职后就取不出来」。这个 skill 的作用就是把这两种情形分开说。
+
+**它默认走云端**：先读 [`/llms.txt`](https://workersledger.cn/llms.txt) 定位到节，再抓该节的 `entries.json`（24–84 KB），在上下文里筛出相关条目整条读完再回答。不要求本地有仓库，也不依赖 GitHub（`raw.githubusercontent.com` 在部分网络下 TLS 握手会失败）。在仓库工作区里则直接读 `book/`，省一次往返。
 
 ## 核实方式
 
@@ -227,7 +229,7 @@ DNS         裸域名需 4 条 A 记录指向 GitHub Pages 地址，解析由域
 
 | 部分 | 指什么 | 许可证 | 可否商用 |
 | --- | --- | --- | --- |
-| **内容** | `book/` 正文、`docs/` 文档、`skills/` skill 文本、站点文字与聚合结构 | **[CC BY-NC-SA 4.0](LICENSE)**（署名—非商业性使用—相同方式共享） | **不可商用** |
+| **内容** | `book/` 正文、`docs/` 文档、`.agents/skills/` skill 文本、站点文字与聚合结构 | **[CC BY-NC-SA 4.0](LICENSE)**（署名—非商业性使用—相同方式共享） | **不可商用** |
 | **代码** | `tools/`、`themes/`（模板、脚本、样式）下的程序代码 | **[MIT](LICENSE-CODE)** | 可以商用 |
 
 **三句话**：内容**不得用于商业目的**（付费产品、订阅服务、以营利为目的的站点或账号、商业培训与商业咨询交付物、商业软件与数据服务都算）；转载、翻译、改编**必须署名、标注改动、并以同一许可证发布**；**想商用请先开 issue 另行取得授权**，取得前不得商用。
@@ -243,9 +245,12 @@ DNS         裸域名需 4 条 A 记录指向 GitHub Pages 地址，解析由域
 | 文件 | 内容 |
 | --- | --- |
 | [`/llms.txt`](https://workersledger.cn/llms.txt) | 这本书是什么、结构、字段含义、引用方式与使用条件 |
-| [`/entries.json`](https://workersledger.cn/entries.json) | 全部条目的归一化索引（标题、编号、说人话、依据、效力位阶、主张强度、举证难度、时效、核对日期） |
+| `/NN-节名/entries.json` | **每节一份的全字段索引（24–84 KB）**。AI 取数请用这个：先按 llms.txt 定位到节，再抓这一节——别整份抓 |
+| [`/entries.json`](https://workersledger.cn/entries.json) | 全部条目的归一化索引（标题、编号、说人话、依据、效力位阶、主张强度、举证难度、时效、核对日期）。**846 KB**，适合离线下载与全文检索，不适合整份读进上下文 |
 | [`/robots.txt`](https://workersledger.cn/robots.txt) | 爬虫策略：允许检索类爬虫，明确拒绝纯采集工具 |
 | `/sitemap.xml` | 站点地图 |
+
+节级索引与整站索引**字段完全一致**（由同一个模板 partial 生成，有断言守着），所以两种端点可以用同一套解析代码。
 
 条目的编号（如 `14.29`）是稳定的，引用时请连编号一起给，方便读者回到原文核对。
 

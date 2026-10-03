@@ -7,7 +7,7 @@
  *   node tools/改节号.mjs <旧号>:<新号> … --apply --backup <目录>   # 先备份再落盘
  *
  * 为什么需要它：本仓库正文用「见第 4 节第 4.6 条」互相指引，这种引用不只在
- * book/ 里，还在 README.md、skills/workers-ledger/SKILL.md、sources/*.md、
+ * book/ 里，还在 README.md、.agents/skills/workers-ledger/SKILL.md、sources/*.md、
  * docs/核实记录/*.md 里。手工在两个节之间插一节，等于一次性改动上百处引用，
  * 漏一处就变成静默的错误指引（读者被指到讲别的事的条目上）。
  *
@@ -47,7 +47,7 @@ const envDie = (msg) => { console.error(`[环境错误] ${msg}`); process.exit(2
  *  生成物 content/ 也改掉，那是派生物，改它没有意义且会被下次生成覆盖。 */
 const SCAN_FILES = [
   'README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'hugo.toml',
-  'skills/workers-ledger/SKILL.md', 'skills/workers-ledger/README.md',
+  '.agents/skills/workers-ledger/SKILL.md', '.agents/skills/workers-ledger/README.md',
   'sources/法规清单.md', 'sources/条文摘录.md',
   'docs/条目规范.md',
 ]

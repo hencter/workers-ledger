@@ -1,0 +1,48 @@
+{{- /*
+  节级机器可读索引 —— 每个节输出一份 /NN-节名/entries.json
+
+  ## 为什么有它（2026-10-04 新增）
+
+  给「云端取数」的 AI agent 一个**体量可控**的入口。本机实测（字节）：
+
+    /entries.json（整站 325 条）        866,176   ← 整份注入上下文会爆
+    节页 HTML（第 14 节）               251,998   ← 导航、侧栏、脚本占绝大部分
+    单个条目页 HTML                     166,760   ← 只为读一条，付的是整站的代价
+    本模板输出的一节（12–31 条）     24–84 KB   ← 正好是「回答一个问题要读的量」
+
+  于是一条可执行的取数路径是：**llms.txt 定位到节 → 抓这一节的 entries.json →
+  在上下文里筛出相关条目 → 整条读完（含备注）再回答**。全程只需要一个域名，
+  不依赖 GitHub（本机实测 raw.githubusercontent 的 TLS 握手会失败）。
+
+  ## 字段与 /entries.json 完全一致
+
+  两者都调 layouts/_partials/json/条目索引.html，**同一份归一化实现**。
+  第一版是直接输出 front matter 原文，与整站的归一化档位不一致
+  （同一个「主张强度」在两处含义不同），已改成共用。
+
+  ## 条目从哪来
+
+  从 hugo.Data.entries 里按节号筛，而不是遍历 `.Pages`：
+  这样输入与整站端点**完全同源**，连归一化的输入都一致。
+  筛选用 `int(...)` 转换后比较——data 来自 JSON，数字类型与 `.Params.weight`
+  未必相同，直接 where 比较会静默筛出 0 条。
+
+  ## 守卫
+
+  tools/checks/geo-check.mjs 会断言：每个节都有这个端点、可解析、
+  条数与 /entries.json 里该节一致、字段与整站端点一致。删掉 [outputs] 里的 JSON
+  或本模板，那一步会红——**这个端点不允许静默消失**。
+*/ -}}
+{{- $sec := int .Params.weight -}}
+{{- $all := hugo.Data.entries | default slice -}}
+{{- $raw := slice -}}
+{{- range $all -}}
+  {{- if eq (int (index . "节号")) $sec -}}{{- $raw = $raw | append . -}}{{- end -}}
+{{- end -}}
+{{- $list := partial "json/条目索引.html" $raw -}}
+{{- dict
+  "节号" $sec
+  "节名" .LinkTitle
+  "条数" (len $list)
+  "条目" $list
+  | jsonify -}}

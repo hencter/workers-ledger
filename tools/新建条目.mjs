@@ -169,7 +169,7 @@ if (NEW_SECTION) {
     console.log(`  1. 编辑 book/${file}，把占位标题和 13 个字段的「待核实」逐项落实`)
     console.log(`  2. node tools/check-items.mjs --check`)
     console.log(`  3. node tools/build-site.mjs  （生成站点内容与索引）`)
-    console.log(`  注意：README.md 与 skills/ 里若写死了「N 节 N 条」，要同步改（跑 node tools/看板.mjs 的第五节会对账）`)
+    console.log(`  注意：README.md 与 .agents/skills/ 里若写死了「N 节 N 条」，要同步改（跑 node tools/看板.mjs 的第五节会对账）`)
   } else {
     console.log(`\n[--dry-run] 未落盘。将写入的内容：\n`)
     console.log(text)

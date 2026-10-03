@@ -17,7 +17,7 @@ docs/条目规范.md  条目格式唯一权威
 docs/核实记录/   每次改动的核实留痕
 tools/         校验脚本 + 构建脚本（零依赖，Node 24）
 tools/checks/  站点侧断言脚本（渲染 / 语义 / GEO，读 public/）
-skills/        照书回答的 AI skill
+.agents/skills/  照书回答的 AI skill（DSH 项目级 skill 目录，会话开始自动发现）
 
 以下是 Hugo 站点本身。**仓库根就是 Hugo 项目根**（2026-10-04 从 site/ 子目录平铺过来）：
 hugo.toml      唯一站点配置

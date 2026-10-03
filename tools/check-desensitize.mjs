@@ -47,8 +47,13 @@ import { fileURLToPath } from 'node:url'
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url))
 
-/** 默认扫描范围与文本类扩展名 */
-const DEFAULT_DIRS = ['book', 'docs', 'sources']
+/** 默认扫描范围与文本类扩展名。
+ *
+ *  `.agents/skills` 是 2026-10-04 补进来的：skill 文本会直接进入 AI 回答、影响读者，
+ *  理应受同一条「不写个人信息」的底线约束；但它原先在 `skills/` 下**就一直不在**
+ *  扫描范围内（默认范围只有 book/docs/sources）——属既有缺口，不是这次移动造成的。
+ *  补进来之前先单独试扫过：2 个文件 237 行，硬命中 0、告警 0、提示 0。 */
+const DEFAULT_DIRS = ['book', 'docs', 'sources', '.agents/skills']
 const TEXT_EXTS = ['.md', '.markdown', '.txt', '.html', '.htm', '.csv', '.json', '.yml', '.yaml']
 
 // ---------------------------------------------------------------------------

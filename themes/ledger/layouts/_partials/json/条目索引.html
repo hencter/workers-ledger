@@ -1,0 +1,70 @@
+{{- /*
+  条目归一化：把一组条目（来自 hugo.Data.entries）转成机器可读索引。
+
+  ## 为什么抽成 partial（2026-10-04）
+
+  `/entries.json`（整站）与 `/NN-节名/entries.json`（分节）必须**字段完全一致**，
+  否则消费方要记两套字段名，而两边开始漂移的那天没人会发现——本节端点刚做出来时
+  就是这个毛病：分节那份直接输出 front matter 原文，而整站那份输出的是归一化档位，
+  同一个「主张强度」在两处含义不同。归一化只写一份，两处共用本文件。
+
+  ## 归一化做什么
+
+  - 「主张强度」「举证难度」「效力位阶」在书里是自由文本（可能带括注、破折号补充），
+    这里**同时给出归一化档位与原文**：档位由 layouts/_partials/logic/ 下的 partial 决定，
+    条目页徽章用的是同一套逻辑，所以页面、整站 JSON、分节 JSON 三处不会打架。
+  - url 一律取 Hugo 自己解析出的 `.RelPermalink`，**不照抄生成脚本拼的路径**：
+    Hugo 会剔掉标题里的中文标点（「01-加班费三档：平日…」实际发布成「01-加班费三档平日…」），
+    照抄会 404。
+
+  入参：条目数组。返回：归一化后的条目数组。
+*/ -}}
+{{- $raw := . -}}
+{{- $home := site.Home.RelPermalink -}}
+{{- $urls := dict -}}
+{{- range site.RegularPages -}}
+  {{- $urls = merge $urls (dict (printf "%v.%v" .Params.节号 .Params.条号) .RelPermalink) -}}
+{{- end -}}
+{{- $list := slice -}}
+{{- range $e := $raw -}}
+  {{- $claimRaw := index $e "主张强度" | default "" -}}
+  {{- $claim := partialCached "logic/claim.html" (dict "v" $claimRaw) (printf "claim|%s" $claimRaw) -}}
+  {{- $proofRaw := index $e "举证难度" | default "" -}}
+  {{- $proof := partialCached "logic/proof.html" (dict "v" $proofRaw) (printf "proof|%s" $proofRaw) -}}
+  {{- $proofParts := split $proofRaw "——" -}}
+  {{- $proofRest := "" -}}
+  {{- if gt (len $proofParts) 1 -}}{{- $proofRest = delimit (after 1 $proofParts) "——" -}}{{- end -}}
+  {{- $rankRaw := index $e "效力位阶" | default "" -}}
+  {{- $rank := partialCached "logic/rank.html" (dict "v" $rankRaw) (printf "rank|%s" $rankRaw) -}}
+  {{- $ranks := partialCached "logic/ranks.html" (dict "v" $rankRaw) (printf "ranks|%s" $rankRaw) -}}
+  {{- $path := index $e "路径" | default "" -}}
+  {{- $url := index $urls (printf "%v.%v" (index $e "节号") (index $e "条号")) | default "" -}}
+  {{- if not $url -}}
+    {{- $url = printf "%s%s" $home (strings.TrimPrefix "/" $path) -}}
+  {{- end -}}
+  {{- $list = $list | append (dict
+    "节号" (index $e "节号")
+    "节名" (index $e "节名")
+    "条号" (index $e "条号")
+    "标题" (index $e "标题")
+    "url" $url
+    "说人话" (index $e "说人话")
+    "适用" (index $e "适用")
+    "成本" (index $e "成本")
+    "收益" (index $e "收益")
+    "依据" (index $e "依据")
+    "地域" (index $e "地域")
+    "时效" (index $e "时效")
+    "备注" (index $e "备注")
+    "主张强度" $claim
+    "主张强度原文" $claimRaw
+    "举证难度" $proof
+    "举证难度说明" $proofRest
+    "效力位阶" $rank
+    "效力位阶原文" $rankRaw
+    "效力位阶全部" $ranks
+    "核对日期" (index $e "核对日期")
+    "成本标签" (index $e "成本标签")
+  ) -}}
+{{- end -}}
+{{- return $list -}}
