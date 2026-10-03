@@ -1,4 +1,9 @@
-# robots.txt —— 由 tools/build-site.mjs 的说明决定，但本文件是静态真相源。
+# robots.txt —— Hugo 模板（enableRobotsTXT = true 时由 Hugo 渲染到站点根）。
+#
+# **它是渲染出来的，不是手写静态文件。** 末尾的 Sitemap 地址由 Hugo 按 `--baseURL`
+# 渲染成绝对地址，所以换域名只需改构建参数（`site.config.json` / `edgeone.json`），
+# 这里不会过期。旧做法是留一个占位符、再由 tools/build-prod.mjs 在构建后替换成域名——
+# 那条路要求构建环境有 Node，而 EdgeOne 只保证有 Hugo，于是线上曾长期留着未替换的占位符。
 #
 # ## 为什么 AI 爬虫策略要写在这里（GEO）
 #
@@ -78,4 +83,7 @@ Disallow: /
 User-agent: Scrapy
 Disallow: /
 
-Sitemap: __SITEMAP__
+# robots.txt **不支持相对路径**，这里必须是绝对地址，否则整行声明无效。
+# 用 Hugo 的 absURL 让构建时就渲染好：实测 --baseURL https://workersledger.cn/
+# 得到 https://workersledger.cn/sitemap.xml，换成别的 baseURL 跟着变，域名没有写死。
+Sitemap: {{ "sitemap.xml" | absURL }}

@@ -72,12 +72,19 @@ const r = spawnSync('hugo', args, {
 if (r.error) fail(`无法执行 hugo：${r.error.message}`)
 if (r.status !== 0) fail(`hugo 构建失败，退出码 ${r.status}`)
 
-// 三、修正 robots.txt 里的 sitemap 地址。
+// 三、兜底修正 robots.txt 里的 sitemap 地址。
 //
-// 静态文件里没法知道部署域名，`site/static/robots.txt` 只能写占位符 `__SITEMAP__`；
-// 而 robots.txt **不支持相对路径**，必须给绝对地址——不替换的话爬虫看到的是一行无效声明，
-// 等于没声明站点地图。sitemap 由 Hugo 生成在 public/sitemap.xml，所以这一步必须
-// 在生产构建**之后**做（这也是它放在本脚本而不是 build-site.mjs 的原因：public/ 每次重建）。
+// **正常情况下这一步什么都不做。** robots.txt 现在是 Hugo 模板
+// （site/themes/ledger/layouts/robots.txt），末尾用 `{{ "sitemap.xml" | absURL }}`
+// 在构建时就渲染成绝对地址——换 baseURL 跟着变，且**不依赖 Node**。
+// 这一点对 EdgeOne 是决定性的：它的构建环境只保证有 Hugo（见 .gitignore 的说明），
+// 而旧的「占位符 + 构建后替换」方案要求有 Node，于是线上长期留着未替换的 `__SITEMAP__`，
+// 等于没有声明站点地图。
+//
+// 保留下面这段替换，只为兼容「模板里又出现占位符」的情况：robots.txt **不支持相对路径**，
+// 一旦留下占位符，爬虫看到的就是一行无效声明。sitemap 由 Hugo 生成在 public/sitemap.xml，
+// 所以这项检查必须在生产构建**之后**做（这也是它在 build-prod 而非 build-site 的原因：
+// public/ 每次重建）。
 {
   const robotsPath = join(PUBLIC, 'robots.txt')
   const sitemapPath = join(PUBLIC, 'sitemap.xml')
@@ -85,13 +92,18 @@ if (r.status !== 0) fail(`hugo 构建失败，退出码 ${r.status}`)
     fail('构建后找不到 public/robots.txt（site/static/robots.txt 应在构建时被复制过来）')
   }
   const robots = readFileSync(robotsPath, 'utf8')
-  if (robots.includes('__SITEMAP__')) {
+  // 只认「整行就是 `Sitemap:` + 占位符」这一种形态，不用 includes()/replaceAll()。
+  // 为什么：注释里一旦提到那个占位符的名字，字符串替换会把它一起改写。
+  // 2026-10-03 实际发生过——robots.txt 的新注释里写了那个名字，
+  // 于是产物里那句注释被换成了一行带域名的乱码，而校验全绿（谁都测不到注释）。
+  const PLACEHOLDER = /^Sitemap:\s*__SITEMAP__[ \t]*$/m
+  if (PLACEHOLDER.test(robots)) {
     if (!existsSync(sitemapPath)) fail('robots.txt 需要 sitemap 地址，但构建后没有 public/sitemap.xml')
     const sitemapUrl = `${BASE.replace(/\/$/, '')}/sitemap.xml`
-    writeFileSync(robotsPath, robots.replaceAll('__SITEMAP__', sitemapUrl), 'utf8')
+    writeFileSync(robotsPath, robots.replace(PLACEHOLDER, `Sitemap: ${sitemapUrl}`), 'utf8')
     console.log(`robots.txt：sitemap 地址已补为 ${sitemapUrl}`)
   } else if (!/^Sitemap:\s*https?:\/\//m.test(robots)) {
-    fail('robots.txt 里既没有 __SITEMAP__ 占位符，也没有绝对地址的 Sitemap 行')
+    fail('robots.txt 里既没有 Sitemap 占位符行，也没有绝对地址的 Sitemap 行')
   } else {
     console.log('robots.txt：sitemap 地址已是绝对地址')
   }
