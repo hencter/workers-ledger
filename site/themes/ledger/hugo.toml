@@ -4,5 +4,23 @@
 
 [module]
   [module.hugoVersion]
+    # 标准版（非 extended）就够：实测用**非 extended** 的 0.167.0 构建本站，
+    # 343 页全部产出（2026-10-03）。样式走 css.Build（esbuild），标准版里就有；
+    # 只有 SCSS 那类才需要 extended。
     extended = false
-    min = '0.146.0'
+    # 真实下限是 0.158.0——原先写的 0.146.0 是错的，0.157.0 就已经构建失败。
+    # 2026-10-03 下载官方二进制逐个实跑（不是查文档推断）：
+    #   0.157.0+extended → 失败：_partials/head/css.html: can't evaluate field Build
+    #                      in type interface {}（css.Build 是 0.158 才有的）
+    #   0.158.0+extended → 通过，343 页
+    #   0.167.0 标准版    → 通过，343 页
+    # **这条声明的作用是「警告」，不是「硬拦」——实测确认过，别把它当门禁**：
+    # 在 0.157.0 上 Hugo 会先打印
+    #   WARN  Module "ledger" is not compatible with this Hugo version: Min 0.158.0
+    # 然后照样往下构建，再在 css.Build 处抛模板错。它的价值是把「版本不对」
+    # 顶到输出最前面（EdgeOne 那次事故的教训就是「先看版本行」，见
+    # docs/核实记录/部署-EdgeOne版本坑.md），但要真变成门禁，必须配合
+    # --panicOnWarning（严格构建参数见 docs/核实记录/前端-hugo站点.md，
+    # 目前**尚未**纳入 tools/体检.mjs）。
+    # 注意：下限是**能力边界**，四条部署路径（本地/Pages/PDF/EdgeOne）仍各自锁定 0.167.0。
+    min = '0.158.0'

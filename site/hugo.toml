@@ -3,7 +3,10 @@
 # 正文由 tools/build-site.mjs 从仓库根目录的 book/ 生成到 site/content/，
 # 每次生成都会整体重建该目录，所以不要手工往里加页面。
 #
-# 版本前提：本机 Hugo v0.167.0 extended。0.158 起 languageCode 已改名为 locale。
+# 版本前提：本机 Hugo v0.167.0。**extended 并非必需**——2026-10-03 实测用非 extended 的
+# 0.167.0 构建本站，343 页全部产出（样式走 css.Build/esbuild，标准版里就有）。
+# 真实下限是 0.158.0，声明与实测记录在主题的 hugo.toml。
+# 0.158 起 languageCode 改名为 locale。
 
 # 本地预览用的默认地址；发布时由 CI 用 --baseURL 覆盖成真实地址
 baseURL = 'https://example.org/'
