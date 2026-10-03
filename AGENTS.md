@@ -55,7 +55,9 @@ tools/ 下全部零依赖，只用 Node 24 内置模块。不引 npm 包，不�
 - **本地预览用 `hugo server -D --renderToMemory`**，它不写 `public/`，可以与验收构建共存。
 - 其余所有构建（试构建、探针）一律输出到 `.tmp-*` 临时目录，那些目录已在 `.gitignore` 里。
 
-验证顺序固定为：`build-site.mjs`（生成内容）→ `check-site.mjs`（哨兵对账）→ `build-prod.mjs`（生产构建）→ `site/checks/render-check.mjs`（渲染断言）→ `site/checks/semantic-check.mjs`（语义与 SEO 断言）。**前四步 + 语义断言全绿**才算站点这一侧通过；一条命令走完：`node tools/体检.mjs --full`。
+验证顺序固定为：`build-site.mjs`（生成内容）→ `check-site.mjs`（哨兵对账）→ `check-hugo-strict.mjs`（严格构建：任何 `WARN` 都算失败，含死模板、目标路径冲突、Hugo 版本不兼容告警）→ `build-prod.mjs`（生产构建）→ `site/checks/render-check.mjs`（渲染断言）→ `site/checks/semantic-check.mjs`（语义与 SEO 断言）→ `site/checks/geo-check.mjs`（GEO 与授权断言）。**全部绿**才算站点这一侧通过；一条命令走完：`node tools/体检.mjs --full`。
+
+严格构建那一步放在生产构建之前，是为了先便宜地拦住模板问题；它**只写 `.tmp-strict/`，不争 `site/public/`**，所以即使有 `hugo server` 在跑（那会让生产构建被跳过）它也照跑。**别把 Hugo 自带的 `--panicOnWarning` 写进它**：该参数与 `--printUnusedTemplates` 互斥，遇到死模板会让 Hugo 直接 panic、输出一堆 goroutine 栈（实测退出码 2）。脚本改为自己收集 `WARN` 行判失败，语义相同但能逐条点名。
 
 改模板（`site/themes/ledger/layouts/`）后**务必跑语义断言**：它守的是 CSS 里看不出来、也不会报编译错的东西——每页恰一个 `<h1>`、**标题不跳级**、地标齐全、`aria-expanded` 与面板 `hidden` 一致、JSON-LD 是可解析对象、og 三件套齐备。本项目就是靠它抓出「15 个节页 `h1` 直接跳 `h3`」和「抽屉按钮声明已收起而面板其实可见」。
 
@@ -85,7 +87,7 @@ tools/ 下全部零依赖，只用 Node 24 内置模块。不引 npm 包，不�
 | 新增条目（内置模板，不依赖 Hugo） | `node tools/新建条目.mjs <节号> "标题" [--after <编号>]` |
 | 新增一节 | `node tools/新建条目.mjs --new-section "节标题"` |
 | 调整节序（同步全仓「第 N 节」引用） | `node tools/改节号.mjs 5:6 …`（默认只报告，加 `--apply`） |
-| 全部校验与构建走一遍 | `node tools/体检.mjs`（加 `--full` 跑生产构建与渲染断言） |
+| 全部校验与构建走一遍 | `node tools/体检.mjs`（加 `--full` 跑严格构建、生产构建与各断言） |
 | 核对条文与官方原文是否逐字一致 | `node tools/核对原文.mjs` |
 | 算期限的具体日期（含节假日顺延） | `node tools/期限计算.mjs <起算日> <时长> --unit day\|workday` |
 | 附则废止条款专项核对 | `node tools/废止核对.mjs` |

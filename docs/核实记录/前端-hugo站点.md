@@ -247,8 +247,11 @@ grep -rn 'HAHAHUGOSHORTCODE' site/content/        → 0 命中
 node tools/build-site.mjs
 node tools/check-site.mjs
 
-# 2. 严格构建（在 site/ 下）
-hugo --ignoreCache --panicOnWarning --printPathWarnings --printUnusedTemplates --printI18nWarnings
+# 2. 严格构建（已脚本化，2026-10-03）
+#    不要在一条命令里同时用 --panicOnWarning 与 --printUnusedTemplates：
+#    遇到死模板时 Hugo 会 panic、只给一段 goroutine 栈。
+#    见 docs/核实记录/前端-严格构建并入体检-2026-10-03.md
+node tools/check-hugo-strict.mjs
 
 # 3. 渲染校验（默认读 site/public，也可 --out 指定别的产物目录）
 node site/checks/render-check.mjs

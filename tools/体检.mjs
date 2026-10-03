@@ -11,7 +11,7 @@
  *
  * 为什么需要它：本仓库的门禁散在多个脚本与三个 GitHub workflow 里——
  * check-items、check-refs、check-desensitize、check-sources、build-site、
- * check-site、build-prod、render-check。一次改完正文，跑漏一个就会出现
+ * check-site、check-hugo-strict、build-prod、render-check。一次改完正文，跑漏一个就会出现
  * 「本机通过、CI 红」或更糟的「本地看着没问题，站点是旧的」。
  *
  * 与 build-prod.mjs 的既有约定保持一致：**site/public/ 只能有一个写者**。
@@ -72,6 +72,13 @@ const STEPS = [
     cmd: ['node', ['tools/check-site.mjs']],
     why: '独立重解析正文，与索引逐字段比对；同时检查提交的生成物与 book/ 是否同步',
     site: true,
+  },
+  {
+    name: 'Hugo 严格构建',
+    cmd: ['node', ['tools/check-hugo-strict.mjs']],
+    why: '把任何 WARN 当失败：死模板、重复目标路径、缺翻译键，以及 Hugo 版本不兼容告警（放在生产构建之前，先便宜地拦住模板问题；它只写 .tmp-strict，不争 site/public/）',
+    site: true,
+    full: true,
   },
   {
     name: '生产构建',
