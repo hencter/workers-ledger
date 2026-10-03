@@ -33,7 +33,22 @@ function initDrawer() {
   if (!button || !panel) return
   const inertTargets = [...document.querySelectorAll('[data-drawer-inert]')]
 
+  // 断点必须与 layout.css 的 @media (min-width: 1080px) 保持一致。
+  const mq = window.matchMedia('(min-width: 1080px)')
+
   const set = (open) => {
+    // **桌面端没有抽屉这回事，任何一次「收起」都必须在这里短路。**
+    //
+    // 为什么这不是多余的防御：`hidden` 会把侧栏整个移出布局，而 .shell 在
+    // ≥1080px 是 `var(--sidebar-w) minmax(0,1fr)` 的两列网格。侧栏一旦 hidden，
+    // 网格里就只剩 <main> 一个子项，它会被放进**第一列**——也就是侧栏那一列，
+    // 正文被挤成 320px 宽的窄条。
+    //
+    // 这不是推演，是实测：无头浏览器里点击侧栏链接的**同一帧**，
+    // 侧栏 hidden=false→true、主区 width 1060→320、left 408→44，与读者截图一致。
+    // 触发它的是下面两个「点链接就收起抽屉」的处理器，它们在桌面端同样会跑；
+    // 按 Escape 那条还会把桌面侧栏**永久**藏掉，直到窗口尺寸变化才复位。
+    if (mq.matches) return
     panel.hidden = !open
     panel.inert = !open
     // 主区只在抽屉**打开**时 inert：无脚本或抽屉未启用时，主区必须可读可聚焦，
@@ -54,7 +69,6 @@ function initDrawer() {
 
   // 视口变化时把状态复位：桌面端侧栏是常驻栏位，不该被 hidden/inert；
   // 移动端回到「关闭」。这一段同时承担首屏初始化，所以下面不再单独调 set(false)。
-  const mq = window.matchMedia('(min-width: 1080px)')
   const syncToViewport = () => {
     if (mq.matches) {
       // 桌面端：侧栏是常驻栏位，hidden / inert / aria-expanded 一律清掉——
