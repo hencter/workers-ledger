@@ -15,8 +15,18 @@ book/          正文，一节一个文件，节内条目编号连续
 sources/       法规注册表与条文逐字摘录，全书依据的来源
 docs/条目规范.md  条目格式唯一权威
 docs/核实记录/   每次改动的核实留痕
-tools/         校验脚本（零依赖，Node 24）
+tools/         校验脚本 + 构建脚本（零依赖，Node 24）
+tools/checks/  站点侧断言脚本（渲染 / 语义 / GEO，读 public/）
 skills/        照书回答的 AI skill
+
+以下是 Hugo 站点本身。**仓库根就是 Hugo 项目根**（2026-10-04 从 site/ 子目录平铺过来）：
+hugo.toml      唯一站点配置
+content/       生成物：由 tools/build-site.mjs 从 book/ 生成，永不手改
+data/          生成物：entries.json（检索索引）
+themes/ledger/ 主题：模板 layouts/ + 资源 assets/ + 图标 static/
+static/        原样复制到发布根（CNAME、必应站长验证）
+assets/        站点级资源
+public/        构建产物，不进版本库
 ```
 
 ## 改正文时
@@ -43,11 +53,11 @@ skills/        照书回答的 AI skill
 
 ## 改工具时
 
-tools/ 下全部零依赖，只用 Node 24 内置模块。不引 npm 包，不建 package.json。改完用故意造错的样例验证报错路径真的会触发，验证结果写进 `docs/核实记录/`。
+tools/ 下（含 tools/checks/）全部零依赖，只用 Node 24 内置模块。不引 npm 包，不建 package.json。改完用故意造错的样例验证报错路径真的会触发，验证结果写进 `docs/核实记录/`。
 
 ## 构建站点时（一条已踩过的坑）
 
-**`site/public/` 只能有一个写者。** `hugo server -D` 会把开发版产物写进同一个 `public/`——带 livereload 脚本、`localhost` 的 canonical、`noindex` 标记、未指纹化的样式。本项目验收时撞过一次：生产构建刚跑完，一个仍在后台的 server 把它覆盖成开发版，结果 `site/checks/render-check.mjs` 三项断言变红（样式不是本站指纹文件、脚本不是本站指纹文件、robots 不是 `index, follow`），**看起来像代码缺陷，实际是并发写者**。
+**`public/` 只能有一个写者。** `hugo server -D` 会把开发版产物写进同一个 `public/`——带 livereload 脚本、`localhost` 的 canonical、`noindex` 标记、未指纹化的样式。本项目验收时撞过一次：生产构建刚跑完，一个仍在后台的 server 把它覆盖成开发版，结果 `tools/checks/render-check.mjs` 三项断言变红（样式不是本站指纹文件、脚本不是本站指纹文件、robots 不是 `index, follow`），**看起来像代码缺陷，实际是并发写者**。
 
 所以：
 
@@ -55,11 +65,11 @@ tools/ 下全部零依赖，只用 Node 24 内置模块。不引 npm 包，不�
 - **本地预览用 `hugo server -D --renderToMemory`**，它不写 `public/`，可以与验收构建共存。
 - 其余所有构建（试构建、探针）一律输出到 `.tmp-*` 临时目录，那些目录已在 `.gitignore` 里。
 
-验证顺序固定为：`build-site.mjs`（生成内容）→ `check-site.mjs`（哨兵对账）→ `check-hugo-strict.mjs`（严格构建：任何 `WARN` 都算失败，含死模板、目标路径冲突、Hugo 版本不兼容告警）→ `build-prod.mjs`（生产构建）→ `site/checks/render-check.mjs`（渲染断言）→ `site/checks/semantic-check.mjs`（语义与 SEO 断言）→ `site/checks/geo-check.mjs`（GEO 与授权断言）。**全部绿**才算站点这一侧通过；一条命令走完：`node tools/体检.mjs --full`。
+验证顺序固定为：`build-site.mjs`（生成内容）→ `check-site.mjs`（哨兵对账）→ `check-hugo-strict.mjs`（严格构建：任何 `WARN` 都算失败，含死模板、目标路径冲突、Hugo 版本不兼容告警）→ `build-prod.mjs`（生产构建）→ `tools/checks/render-check.mjs`（渲染断言）→ `tools/checks/semantic-check.mjs`（语义与 SEO 断言）→ `tools/checks/geo-check.mjs`（GEO 与授权断言）。**全部绿**才算站点这一侧通过；一条命令走完：`node tools/体检.mjs --full`。
 
-严格构建那一步放在生产构建之前，是为了先便宜地拦住模板问题；它**只写 `.tmp-strict/`，不争 `site/public/`**，所以即使有 `hugo server` 在跑（那会让生产构建被跳过）它也照跑。**别把 Hugo 自带的 `--panicOnWarning` 写进它**：该参数与 `--printUnusedTemplates` 互斥，遇到死模板会让 Hugo 直接 panic、输出一堆 goroutine 栈（实测退出码 2）。脚本改为自己收集 `WARN` 行判失败，语义相同但能逐条点名。
+严格构建那一步放在生产构建之前，是为了先便宜地拦住模板问题；它**只写 `.tmp-strict/`，不争 `public/`**，所以即使有 `hugo server` 在跑（那会让生产构建被跳过）它也照跑。**别把 Hugo 自带的 `--panicOnWarning` 写进它**：该参数与 `--printUnusedTemplates` 互斥，遇到死模板会让 Hugo 直接 panic、输出一堆 goroutine 栈（实测退出码 2）。脚本改为自己收集 `WARN` 行判失败，语义相同但能逐条点名。
 
-改模板（`site/themes/ledger/layouts/`）后**务必跑语义断言**：它守的是 CSS 里看不出来、也不会报编译错的东西——每页恰一个 `<h1>`、**标题不跳级**、地标齐全、`aria-expanded` 与面板 `hidden` 一致、JSON-LD 是可解析对象、og 三件套齐备。本项目就是靠它抓出「15 个节页 `h1` 直接跳 `h3`」和「抽屉按钮声明已收起而面板其实可见」。
+改模板（`themes/ledger/layouts/`）后**务必跑语义断言**：它守的是 CSS 里看不出来、也不会报编译错的东西——每页恰一个 `<h1>`、**标题不跳级**、地标齐全、`aria-expanded` 与面板 `hidden` 一致、JSON-LD 是可解析对象、og 三件套齐备。本项目就是靠它抓出「15 个节页 `h1` 直接跳 `h3`」和「抽屉按钮声明已收起而面板其实可见」。
 
 两条容易踩的前端约定：
 
@@ -83,8 +93,7 @@ tools/ 下全部零依赖，只用 Node 24 内置模块。不引 npm 包，不�
 | 要做什么 | 命令 |
 | --- | --- |
 | 看全局（分布、待办、来源、手写数字对账） | `node tools/看板.mjs` |
-| **新增条目（推荐：用 Hugo archetype）** | `node tools/新建条目-archetype.mjs <节号> "标题" [--after <编号>]` |
-| 新增条目（内置模板，不依赖 Hugo） | `node tools/新建条目.mjs <节号> "标题" [--after <编号>]` |
+| 新增条目 | `node tools/新建条目.mjs <节号> "标题" [--after <编号>]` |
 | 新增一节 | `node tools/新建条目.mjs --new-section "节标题"` |
 | 调整节序（同步全仓「第 N 节」引用） | `node tools/改节号.mjs 5:6 …`（默认只报告，加 `--apply`） |
 | 全部校验与构建走一遍 | `node tools/体检.mjs`（加 `--full` 跑严格构建、生产构建与各断言） |
@@ -92,28 +101,24 @@ tools/ 下全部零依赖，只用 Node 24 内置模块。不引 npm 包，不�
 | 算期限的具体日期（含节假日顺延） | `node tools/期限计算.mjs <起算日> <时长> --unit day\|workday` |
 | 附则废止条款专项核对 | `node tools/废止核对.mjs` |
 
-### 条目模板：两个来源，都指向同一份规范
+### 条目模板只有一个来源
 
-1. **`site/archetypes/条目.md`** —— 真正的 Hugo archetype。改模板只改这一个文件，不必改代码。
-   `node tools/新建条目-archetype.mjs <节号> "标题"` 会在临时 Hugo 项目里用 `hugo new` 渲染它，
-   再把结果机械落进 `book/`。
-2. **`tools/lib/条目规范.mjs` 的 `renderEntry()`** —— 内置模板，在不想依赖 Hugo 时用。
+**`tools/lib/条目规范.mjs` 的 `renderEntry()`** —— 条目模板的唯一来源。改模板只改这一个文件。
 
-**为什么不能直接 `hugo new` 写 book/**（两条正路都实测过，都走不通）：
+**为什么不用 Hugo 的 `hugo new` + `archetypes/`**（该路已于 2026-10-04 连同目录一起删除）：
+
 - `hugo new -c book` → Hugo 报 `no existing content directory configured for this project`；
-- 把 `book/` 配成 contentDir → 会让正文变成 Hugo 的页面集合，**方向反了**（`book/` 是真相源，`site/content/` 是它的视图与生成物）。
+- 把 `book/` 配成 contentDir → 会让正文变成 Hugo 的页面集合，**方向反了**（`book/` 是真相源，`content/` 是它的视图与生成物）；
+- 唯一走得通的绕法是「建临时 Hugo 项目 → 把 archetype 复制进去渲染 → 再把结果转回条目格式」。实测可行，但它为同一份模板维护两套定义、多一个中文字段必须逐个加引号的文件、多一个 245 行的脚本，收益为零。
 
-所以采用「临时项目渲染 → 落进 book/」。**编号连续、字段顺序、写后自检与回滚仍由 `tools/新建条目.mjs` 负责**，模板只管内容，职责不重叠。
-
-> archetype 里可用的字段（2026-10-03 实测 Hugo v0.167.0）：`.Name`、`.File.BaseFileName/.ContentBaseName/.TranslationBaseName/.Path/.Dir/.LogicalName/.Ext`、`.Date`、`now`、`.Type`、`.Section`、`.Site.Title`。
-> **不可用**：`.Title`（那是模板函数 `title`，不是字段）、`.Kind`、`.Date.Year`（`.Date` 是字符串类型）。
+**编号连续、字段顺序、写后自检与回滚由 `tools/新建条目.mjs` 负责**，模板只管内容，职责不重叠。当初那套 archetype 的实测细节（可用/不可用字段、`hugo new content` 要求 content 目录已存在）记在 `docs/核实记录/前端-发布配置并入hugo.toml-2026-10-04.md`，仅备查。
 
 
 **新条目一律以「待核实」占位起手。** 这是 AGENTS.md 底线一允许的正确起手式，但它是**中间态，不得随版本发布**：看板与 `check-items.mjs` 会一直把它亮在「未定稿」里，直到你追到官方原文，或改写为「无明文依据 + 倡导性」。
 
 **加一节必须先建后移。** 节号必须从 1 连续（`build-site.mjs` 与 `check-items.mjs` 都按此假设），所以插在中间的顺序是：先 `--new-section` 拿到末位节号，再用 `改节号.mjs` 把它和后面的节整体移位。直接把中间的节往后挪会留下空洞，`改节号.mjs` 会拒绝执行——**那个拒绝是设计，不是故障**。
 
-`site/content/` 与 `site/data/entries.json` 是**生成物，永不手改**。`site/archetypes/条目.md` 是真正生效的模板（经 `tools/新建条目-archetype.mjs` 调用）；而同目录下的 `default.md` 是 Hugo 出厂文件，**在本仓库没有调用路径**——它只被 `hugo new` 在未指定 `--kind` 时使用，而那个产物会落到 `site/content/` 并被下次生成抹掉。新增模板一律用 `--kind 条目`。
+`content/` 与 `data/entries.json` 是**生成物，永不手改**。条目模板只有一个来源：`tools/lib/条目规范.mjs` 的 `renderEntry()`（`archetypes/` 已于 2026-10-04 删除）。
 
 **不要在文档里写死节数与条数。** 想引用规模就写「见 `tools/看板.mjs`」，或跑一次看板拿真实值——`看板.mjs` 第五节专门对手写数字对账，写错了会被它点出来。
 

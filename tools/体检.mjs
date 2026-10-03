@@ -14,7 +14,7 @@
  * check-site、check-hugo-strict、build-prod、render-check。一次改完正文，跑漏一个就会出现
  * 「本机通过、CI 红」或更糟的「本地看着没问题，站点是旧的」。
  *
- * 与 build-prod.mjs 的既有约定保持一致：**site/public/ 只能有一个写者**。
+ * 与 build-prod.mjs 的既有约定保持一致：**public/ 只能有一个写者**。
  * 所以本脚本会先探测有没有 hugo server 在跑，有就跳过生产构建并说明原因，
  * 而不是硬上把产物搞脏（这个坑本仓库撞过一次，见 AGENTS.md）。
  *
@@ -64,7 +64,7 @@ const STEPS = [
   {
     name: '生成站点内容',
     cmd: ['node', ['tools/build-site.mjs']],
-    why: 'book/ → site/content/ + site/data/entries.json（唯一真相源的单向生成）',
+    why: 'book/ → content/ + data/entries.json（唯一真相源的单向生成）',
     site: true,
   },
   {
@@ -76,38 +76,38 @@ const STEPS = [
   {
     name: 'Hugo 严格构建',
     cmd: ['node', ['tools/check-hugo-strict.mjs']],
-    why: '把任何 WARN 当失败：死模板、重复目标路径、缺翻译键，以及 Hugo 版本不兼容告警（放在生产构建之前，先便宜地拦住模板问题；它只写 .tmp-strict，不争 site/public/）',
+    why: '把任何 WARN 当失败：死模板、重复目标路径、缺翻译键，以及 Hugo 版本不兼容告警（放在生产构建之前，先便宜地拦住模板问题；它只写 .tmp-strict，不争 public/）',
     site: true,
     full: true,
   },
   {
     name: '生产构建',
     cmd: ['node', ['tools/build-prod.mjs']],
-    why: '写 site/public/ 并在同一条命令里校验产物是生产形态（6 项断言）',
+    why: '写 public/ 并在同一条命令里校验产物是生产形态（6 项断言）',
     site: true,
     full: true,
     skip: () => {
       const running = hugoServers()
-      return running.length ? `检测到 hugo server 在跑，而 site/public/ 只能有一个写者：\n    ${running.join('\n    ')}` : null
+      return running.length ? `检测到 hugo server 在跑，而 public/ 只能有一个写者：\n    ${running.join('\n    ')}` : null
     },
   },
   {
     name: '渲染断言',
-    cmd: ['node', ['site/checks/render-check.mjs']],
+    cmd: ['node', ['tools/checks/render-check.mjs']],
     why: '渲染断言：模板分档、前端筛选、每条 url 都能落到真实产物（数量以脚本输出为准）',
     site: true,
     full: true,
   },
   {
     name: '语义与 SEO 断言',
-    cmd: ['node', ['site/checks/semantic-check.mjs']],
+    cmd: ['node', ['tools/checks/semantic-check.mjs']],
     why: 'HTML 语义化 / 无障碍 / SEO：每页恰一个 h1、标题不跳级、地标齐全、JSON-LD 是对象、展开控件的 aria 与 hidden 一致',
     site: true,
     full: true,
   },
   {
     name: 'GEO 与授权断言',
-    cmd: ['node', ['site/checks/geo-check.mjs']],
+    cmd: ['node', ['tools/checks/geo-check.mjs']],
     why: 'llms.txt 与数字一致、robots 允许检索爬虫并声明 sitemap、head 声明 rel=llms/license、结构化数据带 license、授权声明四处一致（页脚/授权页/LICENSE/LICENSE-CODE）',
     site: true,
     full: true,
@@ -231,7 +231,7 @@ if (skipped.length) {
   console.log('')
   console.log(`[注意] 有 ${skipped.length} 个步骤被跳过，本次体检**不构成全绿结论**：`)
   for (const s of skipped) console.log(`  - ${s.name}：${s.reason.split('\n')[0]}`)
-  console.log('站点这一侧的验收顺序是定死的：build-site → check-site → build-prod → render-check，四步全绿才算通过。')
+  console.log('站点这一侧的验收顺序是定死的：build-site → check-site → check-hugo-strict → build-prod → 三个断言脚本，全部绿才算通过。')
   process.exit(0)
 }
 

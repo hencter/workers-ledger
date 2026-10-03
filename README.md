@@ -112,8 +112,8 @@
 `book/` 下的 markdown 是**唯一真相源**——它既是你能直接在仓库里读的正文，也是 AI skill 检索的依据。网站在它的基础上生成，不是另写一份：
 
 ```
-book/*.md  ──[tools/build-site.mjs]──▶  site/content/**   （Hugo 内容页）
-                                    └▶  site/data/entries.json（前端筛选与检索索引）
+book/*.md  ──[tools/build-site.mjs]──▶  content/**   （Hugo 内容页）
+                                    └▶  data/entries.json（前端筛选与检索索引）
 ```
 
 生成脚本把每条建议拆成一个独立页面，13 个字段进 front matter，正文只放「说人话」。站点提供按 `主张强度`、`举证难度`、`效力位阶`、成本标签的多维筛选，以及关键词全文检索。
@@ -122,25 +122,25 @@ book/*.md  ──[tools/build-site.mjs]──▶  site/content/**   （Hugo 内�
 node tools/build-site.mjs      # 生成站点内容
 node tools/check-site.mjs      # 生成哨兵：比对索引与正文是否逐字段一致
 node tools/build-offline.mjs   # 生成单文件离线检索页 index.html
-cd site && hugo server -D --renderToMemory   # 本地预览（注意 --renderToMemory，别与构建抢 public/）
+hugo server -D --renderToMemory   # 本地预览（注意 --renderToMemory，别与构建抢 public/）
 ```
 
-【生成哨兵】值得单独说一句：`site/content/` 是生成产物，不会跟着源码一起被人逐行审阅。如果没有 [tools/check-site.mjs](tools/check-site.mjs) 这道比对，生成脚本漏读或截断字段时，读正文的人不会发现，站点上却已经和正文不一致了。它独立重解析一遍正文再逐字段对账，刻意不复用生成脚本的代码——复用会让两边同时错。
+【生成哨兵】值得单独说一句：`content/` 是生成产物，不会跟着源码一起被人逐行审阅。如果没有 [tools/check-site.mjs](tools/check-site.mjs) 这道比对，生成脚本漏读或截断字段时，读正文的人不会发现，站点上却已经和正文不一致了。它独立重解析一遍正文再逐字段对账，刻意不复用生成脚本的代码——复用会让两边同时错。
 
-**生成物在版本库里的说明。** `site/content/` 与 `site/data/` 是**提交进仓库**的（一般 Hugo 项目会忽略它们）。原因：腾讯 EdgeOne Pages 的构建环境只保证有 Hugo、不保证有 Node，而生成内容这一步需要 Node；提交之后 Hugo 就能独立构建，实测不跑任何 Node 脚本即可产出 344 页、canonical 正确。代价是仓库里多了 1.9 MB 影子文件，且它与 `book/` 之间可能出现漂移——所以 `check-site.mjs` 里还有一道**同步检查**：重跑生成逻辑并逐文件比对磁盘结果，改了 `book/` 却忘了重新生成就会报错退出。**规矩不变：生成物不手工编辑，出问题一律重跑 `node tools/build-site.mjs`。**
+**生成物在版本库里的说明。** `content/` 与 `data/` 是**提交进仓库**的（一般 Hugo 项目会忽略它们）。原因：腾讯 EdgeOne Pages 的构建环境只保证有 Hugo、不保证有 Node，而生成内容这一步需要 Node；提交之后 Hugo 就能独立构建，实测不跑任何 Node 脚本即可产出 344 页、canonical 正确。代价是仓库里多了 1.9 MB 影子文件，且它与 `book/` 之间可能出现漂移——所以 `check-site.mjs` 里还有一道**同步检查**：重跑生成逻辑并逐文件比对磁盘结果，改了 `book/` 却忘了重新生成就会报错退出。**规矩不变：生成物不手工编辑，出问题一律重跑 `node tools/build-site.mjs`。**
 
 `book/` 与生成物之间的关系：
 
 ```
-book/*.md  ──[tools/build-site.mjs]──▶  site/content/**   （Hugo 内容页，已提交）
-                                      └▶  site/data/entries.json（检索索引，已提交）
+book/*.md  ──[tools/build-site.mjs]──▶  content/**   （Hugo 内容页，已提交）
+                                      └▶  data/entries.json（检索索引，已提交）
 ```
 
 改完正文后照常跑一次生成脚本，然后连同生成物一起提交。
 
 ## 离线单文件版
 
-在线站解决不了两种用法：发到微信里、拷进手机断网打开。所以还有一个 [`index.html`](index.html)——整本书连同检索与筛选都在一个文件里，双击就开，不用服务器也不用联网，微信可直接传输。它同样由正文生成（经 `site/data/entries.json`），不是第三份内容。
+在线站解决不了两种用法：发到微信里、拷进手机断网打开。所以还有一个 [`index.html`](index.html)——整本书连同检索与筛选都在一个文件里，双击就开，不用服务器也不用联网，微信可直接传输。它同样由正文生成（经 `data/entries.json`），不是第三份内容。
 
 ## 用 AI 照书回答
 
@@ -169,20 +169,24 @@ book/*.md  ──[tools/build-site.mjs]──▶  site/content/**   （Hugo 内�
 | [tools/check-site.mjs](tools/check-site.mjs) | 生成哨兵：比对站点索引与正文逐字段一致 |
 | [tools/build-offline.mjs](tools/build-offline.mjs) | 生成单文件离线检索页 |
 
-站点侧另有一个 106 项断言的渲染校验：[site/checks/render-check.mjs](site/checks/render-check.mjs)，用真实产物对账字段渲染、颜色类名、分布统计与链接可达性。
+站点侧另有一个 106 项断言的渲染校验：[tools/checks/render-check.mjs](tools/checks/render-check.mjs)，用真实产物对账字段渲染、颜色类名、分布统计与链接可达性。
 
 ## 发布与域名
 
-发布配置只有一个真相源：[site.config.json](site.config.json)。**换域名只改那一个文件**——`tools/build-prod.mjs`、`tools/build-pdf.mjs`、`tools/verify-pdf.mjs` 与两个 GitHub Actions 工作流都读它。此前域名散落在三个脚本里各写一份，改一次漏一处就会让所有页面的 canonical 指向 404，已经发生过一次。
+发布配置只有一个真相源：[hugo.toml](hugo.toml)——**发布地址**是它的 `baseURL`，**托管仓库**是 `[params]` 的 `repo`。**换域名只改 `baseURL` 一行**：`tools/build-prod.mjs`、`tools/build-pdf.mjs`、`tools/verify-pdf.mjs`、`tools/check-hugo-strict.mjs` 与两个 GitHub Actions 工作流都经 [tools/lib/发布地址.mjs](tools/lib/发布地址.mjs) 读它（Node 侧走 `hugo config --format json`，不自己解析 TOML）。
+
+2026-10-04 之前这些值放在 `site.config.json`，而它当初存在的唯一理由是「模板读不到站点根之外的文件」——配置并进 `hugo.toml` 后这个理由消失，该文件与其衍生的 `data/site.json` 一并删除。此前域名还散落在三个脚本里各写一份，改一次漏一处就会让所有页面的 canonical 指向 404，**已经发生过一次**，所以读取也收拢到了一个模块。
 
 ```
 域名        workersledger.cn（裸域名）
 托管        GitHub Pages（境外）
-Pages 下发  site/static/CNAME 内容必须与域名完全一致
+Pages 下发  static/CNAME 内容必须与域名完全一致
 DNS         裸域名需 4 条 A 记录指向 GitHub Pages 地址，解析由域名持有者配置
 ```
 
-**仓库根目录还有一个 `hugo.toml`，它不是站点配置**（站点配置只有 `site/hugo.toml` 一个）。那个文件存在只为一件事：EdgeOne Pages 靠扫描项目根目录下的 `hugo.toml` 等文件来判断项目是不是 Hugo 站点，而本站点在 `site/` 子目录里——根目录没有它，EdgeOne 就不识别，`edgeone.json` 里的 `hugoVersion` 也不生效（现场表现是构建日志始终显示预装的 Hugo v0.147.5，构建注定失败）。真正构建时由 `edgeone.json` 指定 `hugo --source site`，所以根目录那个文件不参与任何构建设置。
+**站点就建在仓库根，`hugo.toml` 是唯一的站点配置。** 仓库根就是 Hugo 项目根：`content/`、`data/`、`themes/`、`static/`、`assets/` 与 `hugo.toml` 都在根下，`public/` 是构建产物（不进版本库）。正文真相源仍是 `book/`——它不在 Hugo 的 `contentDir` 里，方向没有反。Hugo 出厂还认一个 `archetypes/` 目录，本仓库不用它（正文不经过 `hugo new`），已于 2026-10-04 删除。
+
+**这条布局是 2026-10-04 从 `site/` 子目录平铺过来的。** 此前站点在 `site/` 下，而 EdgeOne Pages 靠扫描**项目根目录**下的 `hugo.toml` 等文件判断项目是不是 Hugo 站点，根目录因此额外放了一个只写 `title` 的占位 `hugo.toml`，`edgeone.json` 用 `hugo --source site` 指过去。平铺之后这个绕法连同占位文件一起删掉了，`edgeone.json` 只剩 `hugo --minify --baseURL …` 与 `outputDirectory: public`。移迁的取舍与验证见 [docs/核实记录/前端-site迁移到仓库根.md](docs/核实记录/前端-site迁移到仓库根.md)。
 
 **部署目标有四个，Hugo 版本必须一致（都锁 0.167.0）。** 不一致会导致「本地过了、线上失败」，本项目已经在部署平台上连续踩过两次（`.Locale` 与 `css.Build` 都是 0.158+ 才有的 API，而平台预装 0.147.5）：
 
@@ -224,7 +228,7 @@ DNS         裸域名需 4 条 A 记录指向 GitHub Pages 地址，解析由域
 | 部分 | 指什么 | 许可证 | 可否商用 |
 | --- | --- | --- | --- |
 | **内容** | `book/` 正文、`docs/` 文档、`skills/` skill 文本、站点文字与聚合结构 | **[CC BY-NC-SA 4.0](LICENSE)**（署名—非商业性使用—相同方式共享） | **不可商用** |
-| **代码** | `tools/`、`site/`（模板、脚本、样式）下的程序代码 | **[MIT](LICENSE-CODE)** | 可以商用 |
+| **代码** | `tools/`、`themes/`（模板、脚本、样式）下的程序代码 | **[MIT](LICENSE-CODE)** | 可以商用 |
 
 **三句话**：内容**不得用于商业目的**（付费产品、订阅服务、以营利为目的的站点或账号、商业培训与商业咨询交付物、商业软件与数据服务都算）；转载、翻译、改编**必须署名、标注改动、并以同一许可证发布**；**想商用请先开 issue 另行取得授权**，取得前不得商用。
 

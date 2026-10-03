@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 从 favicon.svg 生成 PNG 与 ICO 回退图标。
 //
-//   node site/checks/build-favicon.mjs
+//   node tools/checks/build-favicon.mjs
 //
 // 为什么需要它：SVG favicon 在 Chromium 与 Firefox 上可用，但 Safari 不支持，
 // 一些抓取器、RSS 阅读器与旧浏览器同样只认 favicon.ico。只在 static/ 放一个 svg
@@ -20,9 +20,9 @@ import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const SITE = resolve(HERE, '..')
-const SVG = join(SITE, 'themes', 'ledger', 'static', 'favicon.svg')
-const OUT_DIR = join(SITE, 'themes', 'ledger', 'static')
+const ROOT = resolve(HERE, '..', '..')
+const SVG = join(ROOT, 'themes', 'ledger', 'static', 'favicon.svg')
+const OUT_DIR = join(ROOT, 'themes', 'ledger', 'static')
 
 const BROWSERS = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',

@@ -10,37 +10,27 @@
 // 脚本不是本站指纹文件、robots 不是 index,follow），看起来像代码缺陷，
 // 实际是并发写者。本脚本把「构建」与「构建方式校验」绑在一条命令里，
 // 并在构建前拒绝在有 server 在跑的情况下动手。所有工具里只有这一个写入
-// site/public/，其余一律写临时目录。
+// public/，其余一律写临时目录。
 
 import { spawnSync } from 'node:child_process'
 import { readFileSync, existsSync, rmSync, writeFileSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { publishUrl } from './lib/发布地址.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
-const SITE = join(ROOT, 'site')
-const PUBLIC = join(SITE, 'public')
+// 仓库根就是 Hugo 项目根：站点配置、主题、static 都在仓库根。
+const PUBLIC = join(ROOT, 'public')
 
-/** 发布地址从仓库根的 site.config.json 读，不再在各脚本里各写一份。
- * 换域名只改那一个文件（或用 WRC_BASE_URL 临时覆盖）——此前域名散落在
- * build-prod / build-pdf / verify-pdf 三个脚本里，改名时漏掉一处就会让
- * canonical 指向 404，已经发生过一次。 */
-function publishUrl() {
-  if (process.env.WRC_BASE_URL) return process.env.WRC_BASE_URL
-  try {
-    const cfg = JSON.parse(readFileSync(join(ROOT, 'site.config.json'), 'utf8'))
-    if (cfg.publishUrl) return cfg.publishUrl
-  } catch (e) {
-    console.error(`[警告] 读不到 site.config.json（${e.message}），退回默认发布地址`)
-  }
-  return 'https://hencter.github.io/workers-ledger/'
-}
+// 发布地址的唯一读取入口在 tools/lib/发布地址.mjs（读 hugo.toml 的 baseURL）。
+// 2026-10-04 起 site.config.json 已并入 hugo.toml；此前四个脚本各写一份读法，
+// 换域名漏一处就让 canonical 指向 404——已经发生过一次。
 const BASE = publishUrl()
 
 const fail = (msg) => { console.error(`[失败] ${msg}`); process.exit(1) }
 
-if (!existsSync(join(SITE, 'hugo.toml'))) fail(`找不到站点配置：${SITE}`)
+if (!existsSync(join(ROOT, 'hugo.toml'))) fail(`找不到站点配置：${join(ROOT, 'hugo.toml')}`)
 
 // 一、先看有没有并发的开发服务器。它才是 public/ 被污染的根源。
 let running = []
@@ -64,7 +54,7 @@ if (existsSync(PUBLIC)) rmSync(PUBLIC, { recursive: true, force: true })
 
 const args = ['--minify', '--baseURL', BASE]
 const r = spawnSync('hugo', args, {
-  cwd: SITE,
+  cwd: ROOT,
   encoding: 'utf8',
   stdio: 'inherit',
   env: { ...process.env, HUGO_ENVIRONMENT: 'production', HUGO_ENV: 'production' },
@@ -75,7 +65,7 @@ if (r.status !== 0) fail(`hugo 构建失败，退出码 ${r.status}`)
 // 三、兜底修正 robots.txt 里的 sitemap 地址。
 //
 // **正常情况下这一步什么都不做。** robots.txt 现在是 Hugo 模板
-// （site/themes/ledger/layouts/robots.txt），末尾用 `{{ "sitemap.xml" | absURL }}`
+// （themes/ledger/layouts/robots.txt），末尾用 `{{ "sitemap.xml" | absURL }}`
 // 在构建时就渲染成绝对地址——换 baseURL 跟着变，且**不依赖 Node**。
 // 这一点对 EdgeOne 是决定性的：它的构建环境只保证有 Hugo（见 .gitignore 的说明），
 // 而旧的「占位符 + 构建后替换」方案要求有 Node，于是线上长期留着未替换的 `__SITEMAP__`，
@@ -89,7 +79,7 @@ if (r.status !== 0) fail(`hugo 构建失败，退出码 ${r.status}`)
   const robotsPath = join(PUBLIC, 'robots.txt')
   const sitemapPath = join(PUBLIC, 'sitemap.xml')
   if (!existsSync(robotsPath)) {
-    fail('构建后找不到 public/robots.txt（site/static/robots.txt 应在构建时被复制过来）')
+    fail('构建后找不到 public/robots.txt（static/robots.txt 应在构建时被复制过来）')
   }
   const robots = readFileSync(robotsPath, 'utf8')
   // 只认「整行就是 `Sitemap:` + 占位符」这一种形态，不用 includes()/replaceAll()。
@@ -134,4 +124,4 @@ if (bad) fail(`产物形态校验不通过 ${bad} 项——public/ 很可能被�
 console.log(`\n生产构建完成：${PUBLIC}`)
 console.log(`  baseURL：${BASE}`)
 console.log('  产物形态 6 项全部通过')
-console.log('  下一步：cd site && node checks/render-check.mjs（渲染断言）')
+console.log('  下一步：node tools/checks/render-check.mjs（渲染断言）')

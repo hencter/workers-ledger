@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // 从 book/ 生成 Hugo 站点的内容页与检索索引。
 //
-//   node tools/build-site.mjs            生成到 site/
+//   node tools/build-site.mjs            生成到仓库根的 content/ 与 data/
 //   node tools/build-site.mjs --check    只校验解析结果，不写文件（CI 用）
 //   node tools/build-site.mjs --root X   指定仓库根目录
 //
 // 设计前提（重要）：book/ 下的 markdown 是唯一真相源——它既是仓库里可以直接读的
 // 正文，也是 AI skill 检索的依据。站点只是它的一个视图。所以这里做的是单向生成：
-// book/*.md → site/content/**（Hugo 内容页）+ site/data/entries.json（前端索引）。
+// book/*.md → content/**（Hugo 内容页）+ data/entries.json（前端索引）。
 // 不许反向写回，也不许让站点内容成为需要单独维护的第二份。
 //
 // 字段解析依赖 docs/条目规范.md 的条目格式：三级标题为条目，其后一组
@@ -28,9 +28,9 @@ const argOf = (name, fallback) => {
 const ROOT = resolve(argOf('--root', resolve(HERE, '..')))
 const CHECK_ONLY = argv.includes('--check')
 const BOOK_DIR = join(ROOT, 'book')
-const SITE_DIR = join(ROOT, 'site')
-const CONTENT_DIR = join(SITE_DIR, 'content')
-const DATA_DIR = join(SITE_DIR, 'data')
+// 仓库根就是 Hugo 项目根，站点目录不再嵌在 site/ 下。
+const CONTENT_DIR = join(ROOT, 'content')
+const DATA_DIR = join(ROOT, 'data')
 
 /** 条目必备字段，顺序即规范里的字段顺序 */
 const FIELDS = [
@@ -228,9 +228,9 @@ function sectionIndex(section, entries) {
 
 /** docs/ 下要同步成站点页面的文档。
  *
- *  为什么由生成脚本产出、而不是手放进 site/content/：site/content/ 是本脚本掌管的
- *  目录，每次生成整体重建，手放的文件会被删掉（本仓库原有 site/archetypes/default.md
- *  失效就是这个原因）。单向往生成：docs/<文件>.md → site/content/<目录>/_index.md。
+ *  为什么由生成脚本产出、而不是手放进 content/：content/ 是本脚本掌管的
+ *  目录，每次生成整体重建，手放的文件会被删掉（这也是 `hugo new` 不能直接
+ *  用来写正文的原因）。单向往生成：docs/<文件>.md → content/<目录>/_index.md。
  *
  *  url 显式写死，避免依赖 slug 转换规则；description 进 meta description 与 og。 */
 const DOC_PAGES = [
@@ -350,23 +350,12 @@ function main() {
   if (existsSync(CONTENT_DIR)) rmSync(CONTENT_DIR, { recursive: true, force: true })
   mkdirSync(DATA_DIR, { recursive: true })
 
-  // 把发布配置（site.config.json）转成 Hugo data，供模板读。
+  // 发布配置不再由本脚本转手：发布地址用 hugo.toml 的 baseURL、仓库用 params.repo，
+  // 模板直接读（layouts/_partials/site-config.html）。
   //
-  // 为什么不直接在 hugo.toml 里也写一份仓库地址：那是**第二个真相源**，
-  // 改一个忘一个的那天，页脚链接会指向已废弃的仓库而看起来完全正常。
-  // 也不用 Hugo 的 resources.Get——实测在 site/ 下读不到仓库根的那个文件。
-  // 生成一份 data 最稳：Hugo 读得到，来源仍只有 site.config.json 一份。
-  const cfgPath = join(ROOT, 'site.config.json')
-  if (existsSync(cfgPath)) {
-    const raw = JSON.parse(readFileSync(cfgPath, 'utf8'))
-    // 去掉以 // 开头的注释键，只留真配置，免得注释被当成数据渲染出去
-    const cfg = {}
-    for (const [k, v] of Object.entries(raw)) if (!k.startsWith('//')) cfg[k] = v
-    if (cfg.repo) cfg.repoURL = `https://github.com/${cfg.repo}`
-    writeFileSync(join(DATA_DIR, 'site.json'), JSON.stringify(cfg, null, 2) + '\n', 'utf8')
-  } else {
-    console.log('[警告] 未找到 site.config.json，页脚不会出现仓库链接')
-  }
+  // 2026-10-04 之前这里是「site.config.json → data/site.json → 模板」的一道转手，
+  // 存在的理由只有一个：Hugo 的 resources.Get 读不到站点根之外的文件。
+  // 配置并进 hugo.toml 之后那个理由消失了，**data/site.json 已删除**。
 
   for (const o of out) {
     const dir = join(CONTENT_DIR, o.slug)
@@ -392,14 +381,14 @@ function main() {
     }
     mkdirSync(page.dir, { recursive: true })
     writeFileSync(join(page.dir, page.file), page.content, 'utf8')
-    console.log(`已生成文档页：site/content/${def.目录 || def.标题}/_index.md（来源 docs/${def.源}）`)
+    console.log(`已生成文档页：content/${def.目录 || def.标题}/_index.md（来源 docs/${def.源}）`)
   }
   writeFileSync(
     join(DATA_DIR, 'entries.json'),
     `${JSON.stringify(allEntries, null, 2)}\n`,
     'utf8',
   )
-  console.log(`\n已生成：site/content/（${out.length} 节 ${total} 页）与 site/data/entries.json`)
+  console.log(`\n已生成：content/（${out.length} 节 ${total} 页）与 data/entries.json`)
   if (problems.length) process.exit(1)
 }
 

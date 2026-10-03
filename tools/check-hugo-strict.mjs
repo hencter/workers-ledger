@@ -21,31 +21,23 @@
  *
  * ## 边界
  *
- * 只写 `.tmp-strict/`，**从不写 site/public/**。因此即使有 hugo server 在跑
+ * 只写 `.tmp-strict/`，**从不写 public/**。因此即使有 hugo server 在跑
  * （那种情况下 build-prod.mjs 会拒绝构建），这一步照样能跑——它是最早能发现问题的一步。
  *
  * 退出码：0 全绿 / 1 有 WARN 或构建失败 / 2 环境错误
  */
 
 import { spawnSync } from 'node:child_process'
-import { readFileSync, existsSync, rmSync } from 'node:fs'
+import { existsSync, rmSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { publishUrl } from './lib/发布地址.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
-const SITE = join(ROOT, 'site')
 const OUT = join(ROOT, '.tmp-strict')
 
-/** 发布地址的唯一真相源是仓库根的 site.config.json（与 build-prod.mjs 同一套规则）。 */
-function publishUrl() {
-  if (process.env.WRC_BASE_URL) return process.env.WRC_BASE_URL
-  try {
-    const cfg = JSON.parse(readFileSync(join(ROOT, 'site.config.json'), 'utf8'))
-    if (cfg.publishUrl) return cfg.publishUrl
-  } catch { /* 退回默认，不阻断 */ }
-  return 'https://workersledger.cn/'
-}
+// 发布地址的唯一读取入口在 tools/lib/发布地址.mjs（读 hugo.toml 的 baseURL）。
 const BASE = publishUrl()
 
 const fail = (msg, code = 1) => {
@@ -53,12 +45,11 @@ const fail = (msg, code = 1) => {
   process.exit(code)
 }
 
-if (!existsSync(join(SITE, 'hugo.toml'))) fail(`找不到站点配置：${SITE}`, 2)
+if (!existsSync(join(ROOT, 'hugo.toml'))) fail(`找不到站点配置：${join(ROOT, 'hugo.toml')}`, 2)
 
 rmSync(OUT, { recursive: true, force: true })
 
 const args = [
-  '--source', 'site',
   '--minify',
   '--baseURL', BASE,
   '--destination', OUT,

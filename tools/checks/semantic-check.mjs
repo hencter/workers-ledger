@@ -2,9 +2,9 @@
 /**
  * semantic-check.mjs —— HTML 语义化 / SEO / 爬虫可读性断言
  *
- *   node site/checks/semantic-check.mjs                 断言全部产物页面
- *   node site/checks/semantic-check.mjs --dir <目录>    指定产物目录
- *   node site/checks/semantic-check.mjs --limit 20      只查前 N 页（调试用）
+ *   node tools/checks/semantic-check.mjs                 断言全部产物页面
+ *   node tools/checks/semantic-check.mjs --dir <目录>    指定产物目录
+ *   node tools/checks/semantic-check.mjs --limit 20      只查前 N 页（调试用）
  *
  * 为什么单独有一道：语义化不是「看着顺眼」，它直接决定三件事——
  *   ① 爬虫能不能正确解析页面结构（标题层级、列表、时间）；
@@ -37,11 +37,11 @@ import { join, resolve, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const SITE = resolve(HERE, '..')
+const ROOT = resolve(HERE, '..', '..')
 
 const argv = process.argv.slice(2)
 const argOf = (n, d) => { const i = argv.indexOf(n); return i >= 0 && argv[i + 1] ? argv[i + 1] : d }
-const PUBLIC = resolve(argOf('--dir', join(SITE, 'public')))
+const PUBLIC = resolve(argOf('--dir', join(ROOT, 'public')))
 const LIMIT = Number(argOf('--limit', '0')) || 0
 
 if (!existsSync(PUBLIC)) {

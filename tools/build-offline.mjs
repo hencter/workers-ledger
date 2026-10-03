@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// 从 site/data/entries.json 生成单文件离线检索页。
+// 从 data/entries.json 生成单文件离线检索页。
 //
 //   node tools/build-offline.mjs
 //
 // 为什么还要一个 index.html：Hugo 站点解决了「在线检索」，但有一类用法它接不住——
 // 发到微信里、拷进手机、断网打开。单文件 HTML 双击就开、全文和检索都在里面，
 // 不需要服务器，也不需要联网。这是同一份内容的第二种分发形态，不是重复建设：
-// 数据源统一取 site/data/entries.json（它由 book/ 生成），所以不存在第三份正文。
+// 数据源统一取 data/entries.json（它由 book/ 生成），所以不存在第三份正文。
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'
@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
-const SRC = join(ROOT, 'site', 'data', 'entries.json')
+const SRC = join(ROOT, 'data', 'entries.json')
 const OUT = join(ROOT, 'index.html')
 
 if (!existsSync(SRC)) {

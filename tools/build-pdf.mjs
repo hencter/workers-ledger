@@ -7,13 +7,13 @@
 //
 // 做法：把「封面 + 首页 + 目录 + 每节 + 全部条目」合成一个打印源 HTML，
 // 起一个只读静态服务托管站点产物，用 DevTools 协议让浏览器加载它再 Page.printToPDF。
-// 骨架复用 site/checks/measure-layout.mjs，并且踩的是同一个坑：
+// 骨架复用 tools/checks/measure-layout.mjs，并且踩的是同一个坑：
 //   · 必须连 /json/list 里的**页面** target，不能连 /json/version（浏览器级端点不认 Runtime.enable）
 //   · 必须走 http 不能走 file://（站点资源是根绝对路径，file:// 下加载不到样式表，
 //     打印出来就是裸 HTML）
 //
 // 两点与骨架不同，都是踩过坑之后改的：
-//   1. 样式表**内联**进打印源。site/public 可能被别的构建并发改写（实测发生两次：
+//   1. 样式表**内联**进打印源。public 可能被别的构建并发改写（实测发生两次：
 //      开发版与生产版互相覆盖），内联后打印源自洽，不必赌打印期间磁盘不变。
 //      内联前会按产物的 integrity 属性做 SRI 校验，样式没对上就直接失败。
 //   2. 打印源声明 <base href="公开发布地址">。站点是按子路径部署的，PDF 里的链接
@@ -29,6 +29,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve, dirname, extname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
+import { publishUrl } from './lib/发布地址.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
@@ -36,15 +37,9 @@ const ROOT = resolve(HERE, '..')
 const BOOK_TITLE = '劳动者的账本'
 const BOOK_AUTHOR = '亦幸和幸知'
 
-/** 发布地址读仓库根的 site.config.json 的 publishUrl（PDF 里链接的基准）。
- * 换域名只改那一个文件，或用 --link-base 覆盖。 */
-const BOOK_PUBLIC_BASE = (() => {
-  try {
-    const cfg = JSON.parse(readFileSync(join(ROOT, 'site.config.json'), 'utf8'))
-    if (cfg.publishUrl) return cfg.publishUrl
-  } catch { /* 读不到时退回默认，下面这行是兜底 */ }
-  return 'https://hencter.github.io/workers-ledger/'
-})()
+/** 发布地址（PDF 里链接的基准）读 hugo.toml 的 baseURL，入口在 tools/lib/发布地址.mjs。
+ * 换域名只改 hugo.toml 一行，或用 --link-base 覆盖。 */
+const BOOK_PUBLIC_BASE = publishUrl()
 
 // 无头浏览器候选：Windows 常见安装位置 + Linux/macOS。可用 --browser 或环境变量覆盖。
 const BROWSER_CANDIDATES = [
@@ -70,9 +65,9 @@ const HELP = `把站点正文导出为 PDF 电子书（零第三方依赖，只�
   --out <路径>         输出文件路径。默认 dist/劳动者的账本.pdf
   --only <节号>        只导出某一节（如 2 / 02 / 第2节），
                        默认输出 dist/劳动者的账本-第NN节-<节名>.pdf
-  --site <目录>        站点产物目录（默认 site/public）
+  --site <目录>        站点产物目录（默认 public）
   --base <网址>        改用该已部署站点作为内容来源（如
-                       site.config.json 的 publishUrl）；不给则用本地产物目录
+                       hugo.toml 的 baseURL）；不给则用本地产物目录
   --browser <路径|命令> 浏览器可执行文件；也可用环境变量 WRC_PDF_BROWSER 或 CHROME_PATH。
                        给命令名（如 google-chrome）时按 PATH 查找——CI 上这么用
   --no-sandbox         给浏览器加 --no-sandbox --disable-dev-shm-usage（容器/CI 上常需要）
@@ -96,7 +91,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 function parseArgs(argv) {
   const opts = {
-    out: null, only: null, site: join(ROOT, 'site', 'public'), base: null, browser: null,
+    out: null, only: null, site: join(ROOT, 'public'), base: null, browser: null,
     noSandbox: /^(1|true|yes)$/i.test(process.env.WRC_PDF_NO_SANDBOX || ''),
     linkBase: BOOK_PUBLIC_BASE, linkBaseExplicit: false,
     keepHtml: null, pageNumbers: true, help: false,

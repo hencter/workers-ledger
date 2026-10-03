@@ -1,0 +1,23 @@
+{{- /*
+  发布配置读取器 —— 全部来自 hugo.toml：发布地址用 Hugo 原生的 baseURL，仓库用 params.repo。
+
+  ## 2026-10-04：这一层被简化过
+
+  此前是「site.config.json → tools/build-site.mjs → data/site.json → 本 partial」四道转手，
+  只为绕开「模板读不到站点根之外的文件」这一个限制。配置并进 hugo.toml 之后，
+  Hugo 自己就是唯一真相源，本 partial 直接读 site.BaseURL / site.Params.repo，
+  **data/site.json 已删除**。
+
+  仍然不在模板里硬编码地址：取不到时返回空串，调用方用 {{ with }} 决定是否渲染。
+
+  issueURL 是「新建 issue」的基地址（不含预填参数）。预填参数由 partials/纠错链接.html
+  用 querify 拼——**不要手拼查询串**：中文、井号、换行都必须正确百分号编码，
+  手拼容易漏（把 `#` 原样写进 URL，浏览器会当成锚点，后面的正文全丢）。
+*/ -}}
+{{- $repo := site.Params.repo | default "" -}}
+{{- return (dict
+  "repo" $repo
+  "repoURL" (cond (ne $repo "") (printf "https://github.com/%s" $repo) "")
+  "issueURL" (cond (ne $repo "") (printf "https://github.com/%s/issues/new" $repo) "")
+  "publishUrl" (site.BaseURL | default "")
+) -}}

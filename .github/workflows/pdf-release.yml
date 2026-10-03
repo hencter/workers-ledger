@@ -3,7 +3,7 @@ name: 生成 PDF 并发布
 # 用户要求 PDF 走 Release 分发，参照同类开源项目的做法：正文更新后重新生成，
 # 挂到一个固定 tag 的 Release 上，下载链接保持不变（转发出去的链接不会失效）。
 #
-# 链：book/ 正文 → tools/build-site.mjs 生成 site/content → Hugo 构建 site/public
+# 链：book/ 正文 → tools/build-site.mjs 生成 content → Hugo 在仓库根构建 public
 #     → tools/build-pdf.mjs 把站点产物打成 PDF → 上传到 Release 的固定 tag。
 #
 # 为什么 PDF 由浏览器打印而不是 pandoc/mdbook：
@@ -17,8 +17,8 @@ on:
     branches: [main]
     paths:
       - 'book/**'
-      - 'site/hugo.toml'
-      - 'site/themes/**'
+      - 'hugo.toml'
+      - 'themes/**'
       - 'tools/build-site.mjs'
       - 'tools/build-pdf.mjs'
       - '.github/workflows/pdf-release.yml'
@@ -94,27 +94,18 @@ jobs:
           exit 1
 
       # baseURL 必须与发布地址一致：PDF 里的链接按它拼绝对地址（--link-base）。
-      # 与 pages.yml 用同一套推导规则，两处保持一致。
+      # 与 pages.yml 同源：都读仓库根 hugo.toml 的 baseURL（2026-10-04 前读 site.config.json）。
       - name: 构建站点（生产环境）
-        working-directory: site
         env:
           HUGO_ENVIRONMENT: production
         run: |
           set -euo pipefail
-          # 发布地址优先取 site.config.json 的 publishUrl（绑了自定义域名后，
-          # 按仓库名推导会得到 hencter.github.io/workers-ledger/，与自定义域名
-          # 冲突，canonical 会指向另一个地址）。该文件不存在时才退回推导。
-          if [ -f site.config.json ]; then
-            base=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('site.config.json','utf8')).publishUrl)")
-            echo "发布地址取自 site.config.json"
-          else
-            reponame="${GITHUB_REPOSITORY#*/}"
-            if [ "$reponame" = "${GITHUB_REPOSITORY_OWNER}.github.io" ]; then
-              base="https://${GITHUB_REPOSITORY_OWNER}.github.io/"
-            else
-              base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${reponame}/"
-            fi
-            echo "site.config.json 不存在，按仓库名推导"
+          # 发布地址的唯一真相源是仓库根的 hugo.toml（baseURL）。不再按仓库名推导：
+          # 绑了自定义域名后推导出的 hencter.github.io/... 是另一个地址。
+          base=$(hugo config --format json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).baseurl||''))")
+          if [ -z "$base" ]; then
+            echo "读不到 hugo.toml 的 baseURL，中止" >&2
+            exit 1
           fi
           echo "站点绝对地址：$base"
           echo "SITE_BASE=$base" >> "$GITHUB_ENV"

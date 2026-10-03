@@ -5,11 +5,10 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-// 路径一律相对本脚本定位，这样从仓库根或从 site/ 下跑都一样
+// 路径一律相对本脚本定位：本脚本在 tools/checks/，仓库根是上两级
 const HERE = dirname(fileURLToPath(import.meta.url))
-const SITE = resolve(HERE, '..')
-const ROOT = resolve(SITE, '..')
-const PUB = join(SITE, 'public')
+const ROOT = resolve(HERE, '..', '..')
+const PUB = join(ROOT, 'public')
 const BOOK = join(ROOT, 'book')
 if (!existsSync(PUB)) { console.error('[环境错误] 先跑 node tools/build-prod.mjs'); process.exit(2) }
 

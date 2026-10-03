@@ -1,4 +1,4 @@
 {
-  "buildCommand": "hugo --source site --minify --baseURL https://workersledger.cn/",
-  "outputDirectory": "site/public"
+  "buildCommand": "hugo --minify --baseURL https://workersledger.cn/",
+  "outputDirectory": "public"
 }

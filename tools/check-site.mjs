@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// 生成哨兵：比对 book/ 原文与 site/data/entries.json 的每一个字段。
+// 生成哨兵：比对 book/ 原文与 data/entries.json 的每一个字段。
 //
 //   node tools/check-site.mjs
 //
-// 为什么需要它：site/content/ 是生成产物，不跟着源码一起被审阅。如果没有这道比对，
+// 为什么需要它：content/ 是生成产物，不跟着源码一起被审阅。如果没有这道比对，
 // 生成脚本漏读、截断或改写字段时，阅读正文的人不会发现，站点上的内容却已经和
 // 正文不一致了。这里直接从 book/*.md 独立解析一遍，逐字段与索引对账。
 //
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
 const BOOK_DIR = join(ROOT, 'book')
-const INDEX = join(ROOT, 'site', 'data', 'entries.json')
+const INDEX = join(ROOT, 'data', 'entries.json')
 
 if (!existsSync(INDEX)) {
   console.error(`[环境错误] 找不到站点索引：${INDEX}\n先跑 node tools/build-site.mjs`)
@@ -132,16 +132,16 @@ console.log('结论：索引与正文逐字段一致。')
 
 /* ------------------------- 生成物与 book/ 是否同步
  *
- * site/content/ 与 site/data/ 现在**进了版本库**（原因见 .gitignore 里的说明：
+ * content/ 与 data/ 现在**进了版本库**（原因见 .gitignore 里的说明：
  * 腾讯 EdgeOne Pages 的构建环境只保证有 Hugo，不保证有 Node，而生成内容这一步
  * 需要 Node。把生成物提交上去，Hugo 就能独立构建，实测 344 页、canonical 正确）。
  *
- * 代价是仓库里存在两份会漂移的东西：book/ 是真相源，site/content/ 是它的影子。
+ * 代价是仓库里存在两份会漂移的东西：book/ 是真相源，content/ 是它的影子。
  * 所以这里补一道同步检查：把生成脚本重跑一遍，逐个文件比对磁盘上的结果——
  * 只要改了 book/ 却忘了重新生成，这里就会报错。
  * 写进仓库的生成物不手工编辑，出问题一律重跑生成脚本。 */
 {
-  const contentDir = join(ROOT, 'site', 'content')
+  const contentDir = join(ROOT, 'content')
   const buildScript = join(ROOT, 'tools', 'build-site.mjs')
   if (existsSync(buildScript) && existsSync(contentDir)) {
     // 记录生成前各文件的指纹，跑完生成后比对哪些文件内容变了
@@ -158,7 +158,7 @@ console.log('结论：索引与正文逐字段一致。')
       return out
     }
     const before = fingerprint(contentDir)
-    const dataFile = join(ROOT, 'site', 'data', 'entries.json')
+    const dataFile = join(ROOT, 'data', 'entries.json')
     const beforeData = existsSync(dataFile) ? readFileSync(dataFile) : null
 
     const res = spawnSync(process.execPath, [buildScript], { encoding: 'utf8', cwd: ROOT })
@@ -178,9 +178,9 @@ console.log('结论：索引与正文逐字段一致。')
       console.error(`\n[失败] 提交的生成物与 book/ 不同步：${changed.length} 个内容文件${dataChanged ? '、索引已变化' : ''}`)
       for (const p of changed.slice(0, 10)) console.error(`  - ${p.replace(ROOT + '\\', '').replace(ROOT + '/', '')}`)
       console.error('  生成脚本刚刚重写/新增了它们，说明有人改了 book/ 却没有重新生成。')
-      console.error('  修复：node tools/build-site.mjs，然后把 site/content 与 site/data 一起提交。')
+      console.error('  修复：node tools/build-site.mjs，然后把 content 与 data 一起提交。')
       process.exit(1)
     }
-    console.log(`生成物同步检查：site/content/ 下 ${after.size} 个文件与 book/ 一致。`)
+    console.log(`生成物同步检查：content/ 下 ${after.size} 个文件与 book/ 一致。`)
   }
 }

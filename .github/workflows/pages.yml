@@ -1,7 +1,7 @@
 name: 发布站点
 
-# 构建链：book/ 正文 → tools/build-site.mjs 生成 site/content 与 site/data/entries.json
-#        → Hugo 构建 site/public → 上传发布到 GitHub Pages
+# 构建链：book/ 正文 → tools/build-site.mjs 生成 content 与 data/entries.json
+#        → Hugo 在仓库根构建 public → 上传发布到 GitHub Pages
 #
 # 三道门禁，任何一道失败都不发布：
 #   1. 生成脚本：解析 book/ 时字段缺失、编号不连续等结构问题会让它退出非 0
@@ -59,34 +59,20 @@ jobs:
           grep -q 'extended' /tmp/hugo-version.txt
 
       # baseURL 必须是最终访问地址：canonical 与 Open Graph 都按它输出绝对地址。
-      # 本仓库没有配置远端，所以这里从 GitHub 默认环境变量推：
-      #   用户/组织页（仓库名 = <owner>.github.io）→ https://<owner>.github.io/
-      #   项目页（其余仓库名）              → https://<owner>.github.io/<仓库名>/
-      # 要换成自定义域名，把下面这段改成固定地址即可。
+      # **唯一真相源是仓库根的 hugo.toml（baseURL）**——这里把它读出来用于摘要与断言，
+      # 换域名只改 hugo.toml 一行。2026-10-04 之前这段读 site.config.json 并按仓库名推导，
+      # 那个文件已删除：绑了自定义域名后推导出的 hencter.github.io/... 是另一个地址。
       - name: 构建站点（生产环境）
-        working-directory: site
         env:
           HUGO_ENVIRONMENT: production
         run: |
           set -euo pipefail
-          # 发布地址优先取仓库根目录 site.config.json 的 publishUrl（绑了自定义域名后，
-          # 按仓库名推导会得到 hencter.github.io/workers-ledger/，与自定义域名
-          # 冲突，canonical 会指向另一个地址）。该文件不存在时才退回推导。
-          #
-          # 注意：本步骤的 working-directory 是 site/，配置文件在仓库根，
-          # 相对路径 site.config.json 会永远判定为不存在，必须用绝对路径。
-          config="${GITHUB_WORKSPACE}/site.config.json"
-          if [ -f "$config" ]; then
-            base=$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).publishUrl)" "$config")
-            echo "发布地址取自 site.config.json"
-          else
-            reponame="${GITHUB_REPOSITORY#*/}"
-            if [ "$reponame" = "${GITHUB_REPOSITORY_OWNER}.github.io" ]; then
-              base="https://${GITHUB_REPOSITORY_OWNER}.github.io/"
-            else
-              base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${reponame}/"
-            fi
-            echo "site.config.json 不存在，按仓库名推导"
+          # 发布地址的唯一真相源是仓库根的 hugo.toml（baseURL），读出来供摘要与
+          # 下面那条 canonical 断言使用。**不再按仓库名推导**（见上面注释）。
+          base=$(hugo config --format json | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>process.stdout.write(JSON.parse(s).baseurl||''))")
+          if [ -z "$base" ]; then
+            echo "读不到 hugo.toml 的 baseURL，中止" >&2
+            exit 1
           fi
           echo "站点绝对地址：$base"
           {
@@ -106,7 +92,7 @@ jobs:
           # 与正文对不对无关。
           node -e '
             const fs = require("fs");
-            const flat = fs.readFileSync("site/public/index.html", "utf8").replace(/"/g, "");
+            const flat = fs.readFileSync("public/index.html", "utf8").replace(/"/g, "");
             const want = "<link rel=canonical href=" + process.env.SITE_BASE;
             if (!flat.includes(want)) {
               console.error("canonical 未指向 " + process.env.SITE_BASE);
@@ -116,12 +102,12 @@ jobs:
           '
 
       - name: 渲染校验（模板分档 / 前端筛选 / 硬约束）
-        run: node site/checks/render-check.mjs
+        run: node tools/checks/render-check.mjs
 
       - name: 上传 Pages 产物
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site/public
+          path: public
 
   deploy:
     name: 发布到 GitHub Pages

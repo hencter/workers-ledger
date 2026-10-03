@@ -25,11 +25,12 @@ Thumbs.db
 sources/.原文缓存/
 
 # Hugo 脚手架演示内容：hugo new theme 会带出 posts 样例，与本仓库无关
-site/themes/*/content/
+/themes/*/content/
 
-# Hugo 构建产物：只跟踪源，不跟踪输出
-site/public/
-site/resources/
+# Hugo 构建产物：只跟踪源，不跟踪输出。
+# 仓库根就是 Hugo 项目根，所以 public/ 与 resources/ 都落在根下（已锚定，避免误伤子目录）。
+/public/
+/resources/
 .hugo_build.lock
 
 # 生成产物：由 tools/build-site.mjs 从 book/ 产出。
@@ -37,12 +38,12 @@ site/resources/
 # **已改为进版本库**，原因：腾讯 EdgeOne Pages 的构建环境只保证有 Hugo，
 # 不保证有 Node（其文档明确说 Hugo 项目检测「独立于 Node.js 生态」），
 # 而生成内容这一步需要 Node。提交生成物后 Hugo 能独立构建——
-# 实测不跑任何 Node 脚本，仅用已提交的 site/content 即可构建出 344 页、
+# 实测不跑任何 Node 脚本，仅用已提交的 content 即可构建出 344 页、
 # canonical 正确。GitHub Actions 那边也有 Node，两条路都能走。
 #
-# 代价是仓库里存在两份会漂移的东西：book/ 是真相源，site/content 是它的影子。
+# 代价是仓库里存在两份会漂移的东西：book/ 是真相源，content/ 是它的影子。
 # 因此 tools/check-site.mjs 里加了一道**同步检查**：重跑生成逻辑并逐文件
 # 比对磁盘结果，改了 book/ 却忘了重新生成就会报错退出。
 # 规矩不变：生成物不手工编辑，出问题一律重跑 `node tools/build-site.mjs`。
-!site/content/
-!site/data/
+!content/
+!data/

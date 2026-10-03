@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // 用无头浏览器真实测量渲染后的几何，而不是靠算术推断。
 //
-//   node site/checks/measure-layout.mjs                    测量默认的一组视口宽度
-//   node site/checks/measure-layout.mjs 1512 1280 1920     指定宽度
+//   node tools/checks/measure-layout.mjs                    测量默认的一组视口宽度
+//   node tools/checks/measure-layout.mjs 1512 1280 1920     指定宽度
 //
 // 为什么要这个脚本：本仓库的版面问题（右侧留白、导航标题折行）讨论过三轮，
 // 前两轮我都是用「可用宽度 − 上限」估算的。估算错了会得出「已经修好」的结论，
@@ -20,8 +20,8 @@ import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const SITE = resolve(HERE, '..')
-const PUBLIC = join(SITE, 'public')
+const ROOT = resolve(HERE, '..', '..')
+const PUBLIC = join(ROOT, 'public')
 
 const BROWSERS = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',

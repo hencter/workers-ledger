@@ -9,9 +9,9 @@
 
    用法（先有产物，再跑校验）：
      node tools/build-site.mjs
-     cd site && hugo --minify
-     node site/checks/render-check.mjs                 # 默认读 site/public
-     node site/checks/render-check.mjs --out .tmp-build  # 指定别的产物目录
+     hugo --minify
+     node tools/checks/render-check.mjs                 # 默认读 public/
+     node tools/checks/render-check.mjs --out .tmp-build  # 指定别的产物目录
 
    校验项：
      A 纯函数（待复核日期算术、关键词归一化、URL query 往返）
@@ -28,14 +28,14 @@ import path from 'node:path'
 import url from 'node:url'
 
 const HERE = path.dirname(url.fileURLToPath(import.meta.url))
-const SITE = path.resolve(HERE, '..')
+const ROOT = path.resolve(HERE, '..', '..')
 const args = process.argv.slice(2)
 const outArg = args.indexOf('--out')
 // 默认读站点自己的 public/；--out 传相对路径时按当前工作目录解析
 const OUT = outArg >= 0 && args[outArg + 1]
   ? path.resolve(process.cwd(), args[outArg + 1])
-  : path.join(SITE, 'public')
-const JS_BASE = url.pathToFileURL(path.join(SITE, 'themes/ledger/assets/js/')).href
+  : path.join(ROOT, 'public')
+const JS_BASE = url.pathToFileURL(path.join(ROOT, 'themes/ledger/assets/js/')).href
 const STALE_DAYS = 180
 
 let total = 0
@@ -202,7 +202,7 @@ const langAttr = /<html[^>]*\blang=(?:"([^"]*)"|([^ >]+))/.exec(homeHtml)
 check('html lang 为 zh-CN（不是 en）', (langAttr?.[1] || langAttr?.[2] || '').trim(), 'zh-CN')
 const ogLocaleTag = /<meta[^>]*property="og:locale"[^>]*>/.exec(homeHtml)?.[0] || ''
 checkTrue('og:locale 为 zh_CN', ogLocaleTag.includes('zh_CN'))
-const themeDir = path.join(SITE, 'themes')
+const themeDir = path.join(ROOT, 'themes')
 let rawLocaleUses = []
 const walkHtml = (dir) => {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -222,7 +222,7 @@ walkHtml(themeDir)
 check('模板里没有裸用 site.Language.Locale（Hugo <0.158 会构建失败）', rawLocaleUses.length, 0)
 
 // —— 版面宽度 ——
-// 背景与实测数据见 site/checks/measure-layout.mjs（用无头浏览器量真实盒子）。
+// 背景与实测数据见 tools/checks/measure-layout.mjs（用无头浏览器量真实盒子）。
 // 前两轮是靠「可用宽度 − 上限」估算的，漏掉了 .entry 上还有第二层上限，
 // 于是得出「已经修好」的结论而用户看到的留白仍然很大。所以这里不再猜规则，
 // 改成断言「主区没有宽度上限」+「正文块有合理行宽上限」，再用独立脚本量几何。

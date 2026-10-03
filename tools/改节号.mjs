@@ -44,7 +44,7 @@ const envDie = (msg) => { console.error(`[环境错误] ${msg}`); process.exit(2
 
 /** 会被改节号影响的文件范围。刻意用白名单而不是全仓扫描：
  *  白名单漏一个文件，最坏是那处引用没更新（自检会报残留）；而全仓扫描会把
- *  生成物 site/content/ 也改掉，那是派生物，改它没有意义且会被下次生成覆盖。 */
+ *  生成物 content/ 也改掉，那是派生物，改它没有意义且会被下次生成覆盖。 */
 const SCAN_FILES = [
   'README.md', 'AGENTS.md', 'CONTRIBUTING.md', 'hugo.toml',
   'skills/workers-ledger/SKILL.md', 'skills/workers-ledger/README.md',
@@ -72,7 +72,7 @@ if (argv.length === 0 || has('--help') || has('-h')) {
   - 默认不落盘，先看报告；
   - 落盘后立刻整仓自检（编号连续、H1 与文件名一致、无残留旧引用），
     任一项不过就从备份回滚；
-  - 只改 book/ 与白名单里的文档，不碰 site/content/（派生物，由 build-site.mjs 生成）。
+  - 只改 book/ 与白名单里的文档，不碰 content/（派生物，由 build-site.mjs 生成）。
 `)
   process.exit(argv.length === 0 ? 1 : 0)
 }
@@ -538,5 +538,5 @@ console.log(`完成。备份在：${backupDir}`)
 console.log('下一步（四步全绿才算站点这侧通过）：')
 console.log('  node tools/check-items.mjs --check')
 console.log('  node tools/build-site.mjs && node tools/check-site.mjs')
-console.log('  node tools/build-prod.mjs && node site/checks/render-check.mjs')
+console.log('  node tools/build-prod.mjs && node tools/checks/render-check.mjs')
 console.log('确认无误后可删除备份目录。')

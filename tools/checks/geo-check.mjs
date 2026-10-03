@@ -2,7 +2,7 @@
 /**
  * geo-check.mjs —— GEO（面向检索式 AI 与聚合器）与授权声明的断言
  *
- *   node site/checks/geo-check.mjs
+ *   node tools/checks/geo-check.mjs
  *
  * ## 为什么单独有一道
  *
@@ -22,14 +22,14 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { hugoConfig } from '../lib/发布地址.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const SITE = resolve(HERE, '..')
-const ROOT = resolve(SITE, '..')
-const PUBLIC = join(SITE, 'public')
+const ROOT = resolve(HERE, '..', '..')
+const PUBLIC = join(ROOT, 'public')
 
 if (!existsSync(PUBLIC)) {
-  console.error('[环境错误] 找不到 site/public，先跑 node tools/build-prod.mjs')
+  console.error('[环境错误] 找不到 public，先跑 node tools/build-prod.mjs')
   process.exit(2)
 }
 
@@ -169,18 +169,18 @@ if (existsSync(licenseCode)) {
 
 // ---------------------------------------------------------------------------
 // 5) 回仓库入口：站点必须能回到 GitHub（正文真相源在仓库里）
-//    地址读自 site.config.json —— 断言直接比对「产物里的链接」与「配置里的 repo」，
+//    仓库地址读自 hugo.toml 的 params.repo —— 断言直接比对「产物里的链接」与「配置里的 repo」，
 //    任何一侧改了而另一侧没跟上都会红。这类跨文件一致性正是本脚本存在的理由。
 // ---------------------------------------------------------------------------
 const cfg = (() => {
-  const p = join(ROOT, 'site.config.json')
-  return existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : null
+  const c = hugoConfig()
+  return c && c.params ? c.params : null
 })()
-add('site.config.json 可读', cfg !== null)
+add('hugo.toml 的 params 可读', cfg !== null)
 if (cfg && cfg.repo) {
   const expectRepoURL = `https://github.com/${cfg.repo}`
   add('产物页脚含仓库链接', Boolean(home && home.includes(expectRepoURL)),
-    `页脚未出现 ${expectRepoURL}——检查 tools/build-site.mjs 是否生成 site/data/site.json，`
+    `页脚未出现 ${expectRepoURL}——检查 hugo.toml 的 params.repo，`
     + '以及 layouts/_partials/footer.html 与 site-config.html 是否在渲染它')
   // 全站抽查：页脚是共用模板，仓库链接应当覆盖所有页面
   let withRepo = 0
@@ -201,13 +201,13 @@ if (cfg && cfg.repo) {
   add('仓库链接覆盖全部页面', withRepo > 100, `只有 ${withRepo} 个页面含仓库链接（页脚是共用模板，应覆盖所有页面）`)
   if (withRepo > 0 && withRepo <= 100) console.log('  含链接的页面示例：' + sample.join('、'))
 } else {
-  add('site.config.json 里有 repo 字段', false, '缺少 repo，页脚不会出现仓库链接')
+  add('hugo.toml 的 params 里有 repo', false, '缺少 repo，页脚不会出现仓库链接')
 }
 
 // ---------------------------------------------------------------------------
 // 6) 纠错入口：每条内容都要能一键提出「带证据的 issue」
 //
-//    为什么值得断言：这是**跨文件的三段接线**——site.config.json 的 repo
+//    为什么值得断言：这是**跨文件的三段接线**——hugo.toml 的 params.repo
 //    → site-config.html 的 issueURL → 纠错链接.html 的预填参数。任何一段断了，
 //    页面上要么没按钮，要么点开是空白 issue，而页面看起来都正常。
 //    （写这一段时仅核对「title 到底有没有进 URL」就返工两次：一次是正则只匹配
