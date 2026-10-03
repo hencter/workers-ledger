@@ -175,6 +175,25 @@ if (existsSync(licenseCode)) {
   add('LICENSE-CODE 是 MIT', /MIT License/.test(readFileSync(licenseCode, 'utf8')))
 }
 
+// 版权行的主体名必须与仓库一致。
+//
+// 为什么单列一条：项目从 `work-rights-cn` 改名成 `workers-ledger` 之后，两份 LICENSE 里的
+// 版权行一直没跟着改，而**没有任何东西守着它**，于是漂到 2026-10-04 才被人发现。
+// 版权行是法律声明的一部分：名字写错，被许可人会困惑「这份许可是谁给的」。
+// 判据直接取 hugo.toml 的 `params.repo` 末段，不另写一份仓库名——写两份就会再漂一次。
+const repoName = (() => {
+  const c = hugoConfig()
+  return c && c.params && c.params.repo ? String(c.params.repo).split('/').pop() : ''
+})()
+if (repoName) {
+  for (const [名称, 路径] of [['LICENSE', licenseRoot], ['LICENSE-CODE', licenseCode]]) {
+    if (!existsSync(路径)) continue
+    const m = /Copyright \(c\) \d{4} (\S+)/.exec(readFileSync(路径, 'utf8'))
+    add(`${名称} 的版权主体与仓库名一致`, Boolean(m) && m[1] === repoName,
+      m ? `版权行写的是「${m[1]}」，仓库名是「${repoName}」` : '找不到 Copyright 行')
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 5) 回仓库入口：站点必须能回到 GitHub（正文真相源在仓库里）
 //    仓库地址读自 hugo.toml 的 params.repo —— 断言直接比对「产物里的链接」与「配置里的 repo」，

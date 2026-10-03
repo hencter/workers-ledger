@@ -133,6 +133,9 @@ jobs:
 
       - name: 把 PDF 汇总写进运行摘要
         env:
+          # ⚠ 这个名字**不要改**。`work-rights-cn` 是项目旧名，但它是**已发布的 Release 资产名**，
+          # README 里公布的下载地址就指向它——改成 workers-ledger 会让所有已转发出去的链接 404，
+          # 而本仓库承诺过「下载地址固定不变」。这是全仓唯一刻意保留旧名的地方。
           ASSET_NAME: work-rights-cn-book.pdf
         run: |
           set -euo pipefail
