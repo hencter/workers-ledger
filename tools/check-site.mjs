@@ -184,3 +184,65 @@ console.log('结论：索引与正文逐字段一致。')
     console.log(`生成物同步检查：content/ 下 ${after.size} 个文件与 book/ 一致。`)
   }
 }
+
+/* ------------------------- 离线单文件版是否与正文同步
+ *
+ * `index.html`（离线单文件检索页）是**对外发布的**：README 让读者下载它、微信直接传。
+ * 但它不在任何体检步骤里，而生成它的 `tools/build-offline.mjs` 是个独立脚本——
+ * 谁也不会顺手跑它。于是它漂过：2026-10-04 时它写着 324 条，而 book/ 已经是 325 条，
+ * 一直没被发现（是核对站点迁移时人工数出来的）。这道检查就是为了让「漏跑生成脚本」
+ * 变得看得见。
+ *
+ * **不复用 tools/build-offline.mjs 的代码**，与上面 content/ 的同步检查同一原则：
+ * 独立从产物里把 `const DATA = [...]` 抠出来解析，再和 data/entries.json 逐条比对。
+ * 复用生成逻辑的话，两边会同时错。
+ *
+ * 只比对**内容字段**，不逐字节：格式差异（空格、键序）不是漂移，内容差异才是。
+ */
+{
+  const offlinePath = join(ROOT, 'index.html')
+  const dataPath = join(ROOT, 'data', 'entries.json')
+  if (!existsSync(offlinePath) || !existsSync(dataPath)) {
+    console.log('离线单文件版同步检查：index.html 或 data/entries.json 不存在，跳过。')
+  } else {
+    const html = readFileSync(offlinePath, 'utf8')
+    const MARKER = 'const DATA = '
+    const at = html.indexOf(MARKER)
+    let parsed = null
+    let why = ''
+    if (at < 0) why = `找不到 \`${MARKER.trim()}\` 标记（生成脚本改了输出格式？）`
+    else {
+      const from = at + MARKER.length
+      const eol = html.indexOf('\n', from)
+      const raw = html.slice(from, eol < 0 ? undefined : eol).trim().replace(/;$/, '')
+      try { parsed = JSON.parse(raw) } catch (err) { why = err.message }
+    }
+    if (!Array.isArray(parsed)) {
+      console.error(`\n[失败] index.html 里的条目数据解析不出来：${why}`)
+      console.error('  它是给读者的离线版，内容必须能从产物里独立读出来。')
+      process.exit(1)
+    }
+
+    const 索引 = JSON.parse(readFileSync(dataPath, 'utf8'))
+    if (parsed.length !== 索引.length) {
+      console.error(`\n[失败] 离线单文件版与正文不同步：index.html 里 ${parsed.length} 条，data/entries.json 里 ${索引.length} 条`)
+      console.error('  修复：node tools/build-offline.mjs，然后把 index.html 一起提交。')
+      process.exit(1)
+    }
+
+    // 逐条比对内容字段。抽出来的字段名与 data/entries.json 应当完全同源。
+    const 比对字段 = ['节号', '节名', '条号', '标题', '说人话', '依据', '主张强度', '举证难度', '效力位阶', '时效', '备注', '核对日期']
+    for (let i = 0; i < parsed.length; i++) {
+      for (const k of 比对字段) {
+        if (String(parsed[i][k] ?? '') !== String(索引[i][k] ?? '')) {
+          console.error(`\n[失败] 离线单文件版与正文内容不一致：第 ${i + 1} 条「${k}」`)
+          console.error(`  index.html：${JSON.stringify(parsed[i][k] ?? '').slice(0, 80)}`)
+          console.error(`  正文索引　：${JSON.stringify(索引[i][k] ?? '').slice(0, 80)}`)
+          console.error('  修复：node tools/build-offline.mjs，然后把 index.html 一起提交。')
+          process.exit(1)
+        }
+      }
+    }
+    console.log(`离线单文件版同步检查：index.html 里 ${parsed.length} 条与 data/entries.json 逐字段一致。`)
+  }
+}
