@@ -32,6 +32,10 @@ on:
       - 'themes/**'
       - 'tools/build-site.mjs'
       - 'tools/build-pdf.mjs'
+      # verify-pdf 也列进来：版本化发布的说明要靠它的 --json 汇总取页数。
+      # 改了它的输出格式而没触发一次发布，就会在下一个版本上才发现说明是坏的
+      # （2026-10-04 就是这样：说明里印着「（页数未取到）」）。
+      - 'tools/verify-pdf.mjs'
       - '.github/workflows/pdf-release.yml'
   workflow_dispatch:
     inputs:
