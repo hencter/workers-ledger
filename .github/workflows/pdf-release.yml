@@ -153,11 +153,13 @@ jobs:
         run: |
           set -euo pipefail
           ls -l dist/
-          node tools/verify-pdf.mjs dist/劳动者的账本.pdf || {
-            echo "verify-pdf.mjs 未通过或不存在，改用最小检查" >&2
-            test -s dist/劳动者的账本.pdf
-            test "$(stat -c%s dist/劳动者的账本.pdf)" -gt 500000
-          }
+          # 这道门禁**不再降级失败**。以前是 `verify-pdf || { 文件大于 500KB 就算过 }`，
+          # 于是「校验从来没通过过」一直没人知道：工作流长期是绿的，而 verify-pdf
+          # 在 CI 产物上只有 22/29。那 7 项不是环境差异——是 PDF 的**文本层**把汉字写成了
+          # 康熙部首（读者搜索与复制会拿到错字）。根因与修法见
+          # themes/ledger/assets/css/tokens.css 的 --font-sans 注释；修好后是 29/29。
+          # 现在改成硬失败：再有回归，直接挡住发布。
+          node tools/verify-pdf.mjs dist/劳动者的账本.pdf
 
       - name: 把 PDF 汇总写进运行摘要
         env:

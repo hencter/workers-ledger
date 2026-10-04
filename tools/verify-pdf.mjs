@@ -452,6 +452,18 @@ for (const [sec, name, phrase] of spots) {
   add(`抽查命中 ${name}`, fullNoWs.includes(noWs(phrase)), `「${phrase}」`)
 }
 
+// PDF 的**文本层**不能出现康熙部首（U+2F00–U+2FD5）。
+//
+// 为什么单列这一条：字形看着一模一样，但**读者搜索「大陆」搜不到、复制出来是「⼤陆」**。
+// CI 上踩过一次——字体栈落到 Ubuntu 的 Noto CJK（OTC 集合字体，汉字与康熙部首共享 GID），
+// Chromium 生成 ToUnicode 时取到了部首码点，325 条标题有 283 条因此对不上；
+// 而当时工作流把校验失败降级成了「文件大于 500KB 就算过」，于是红灯一直被吞掉。
+// 根因与修法见 themes/ledger/assets/css/tokens.css 里 --font-sans 的注释。
+// 有这一条，字体栈被调回去会是一次红，而不是一次静默的文本层损坏。
+const 部首 = fullText.match(/[\u2F00-\u2FD5]/g) || []
+add('文本层不含康熙部首（否则搜索与复制会得到错字）', 部首.length === 0,
+  部首.length ? `发现 ${部首.length} 处，例如 ${[...new Set(部首)].slice(0, 6).join('')}` : '')
+
 // 全量核对：entries.json 里每一条的标题与「说人话」正文都应在 PDF 里。
 // 标题在目录页也有一份，所以「说人话」才真正证明条目正文进了 PDF。
 let perEntry = null
