@@ -94,7 +94,11 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-cjk-extra
+          # fonts-wqy-microhei 是**必需**的：字体栈里 WenQuanYi 排在 Noto CJK 之前，
+          # 用来避开 Noto CJK OTC「汉字与康熙部首共享 GID」导致的 PDF 文本层错误
+          # （搜索与复制会拿到部首码点，详见 themes/ledger/assets/css/tokens.css 的注释）。
+          # Noto CJK 仍保留：它是中文兜底，也是下面字体清单自证的一部分。
+          sudo apt-get install -y -qq fonts-noto-cjk fonts-noto-cjk-extra fonts-wqy-microhei
           echo "已安装的中文字体（前若干项）："
           fc-list :lang=zh | head -n 12
           if [ -z "$(fc-list :lang=zh)" ]; then

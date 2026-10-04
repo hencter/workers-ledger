@@ -4,10 +4,18 @@
 :root {
   color-scheme: light dark;
 
-  /* 字体：全部走系统字体栈，不引任何外部字体文件 */
+  /* 字体：全部走系统字体栈，不引任何外部字体文件。
+     **顺序有讲究（2026-10-05）**：Ubuntu 的 `fonts-noto-cjk` 是 **OTC 集合字体**，
+     其中的汉字与康熙部首共享 GID，Chromium 生成 ToUnicode 时会取到部首码点
+     （U+2F00–U+2FD5）——PDF 的**文本层**于是把「大陆」记成「⼤陆」、「页」记成「⻚」、
+     把「工」记成「⼯」。字形看着一样，但**读者搜索与复制中文会拿到错字**：
+     CI 构建的 PDF 里 325 条标题有 283 条因此对不上。
+     让**非 OTC** 的 WenQuanYi 排到 Noto CJK 之前即可避开（CI 里装了 fonts-wqy-microhei）。
+     本机走 PingFang／微软雅黑／Noto Sans SC（独立 TTF），本来没这个问题——
+     这一段是为 CI 写的，**别顺手把顺序调回去**。 */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC",
-    "WenQuanYi Micro Hei", sans-serif;
+    "Hiragino Sans GB", "Microsoft YaHei", "WenQuanYi Micro Hei",
+    "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas,
     "Liberation Mono", monospace;
 
