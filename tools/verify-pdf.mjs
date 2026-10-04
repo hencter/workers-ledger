@@ -369,10 +369,16 @@ const fullNoWs = noWs(fullText)
 const cjk = (fullText.match(/[\u3400-\u4dbf\u4e00-\u9fff]/g) || []).length
 const sizeMB = buf.length / 1024 / 1024
 
-console.log(`\n=== 核实 ${pdfPath}`)
-console.log(`字节 ${buf.length}（${sizeMB.toFixed(2)} MB）· 对象 ${objects.size} 个 · 页面 ${pages.length} 页 · 提取文字 ${fullText.length} 字符（汉字 ${cjk} 个）`)
-console.log(`/Title ${JSON.stringify(title)} · /Author ${JSON.stringify(author)} · /Lang ${JSON.stringify(lang)} · /Producer ${JSON.stringify(producer)}`)
-if (!opt.json) console.log('\n--- 断言 ---')
+// --json 模式**只输出 JSON**——这是那个参数的契约：消费方会直接 JSON.parse 整份 stdout。
+// 2026-10-04 踩过：下面几行人类可读摘要原本是无条件打印的，于是 `--json` 的输出前面
+// 挂着两行中文，`JSON.parse()` / `require()` 一律失败。PDF 发布说明里的页数就是这么丢的
+// （发布出来的版本说明上写着「（页数未取到）」）。
+if (!opt.json) {
+  console.log(`\n=== 核实 ${pdfPath}`)
+  console.log(`字节 ${buf.length}（${sizeMB.toFixed(2)} MB）· 对象 ${objects.size} 个 · 页面 ${pages.length} 页 · 提取文字 ${fullText.length} 字符（汉字 ${cjk} 个）`)
+  console.log(`/Title ${JSON.stringify(title)} · /Author ${JSON.stringify(author)} · /Lang ${JSON.stringify(lang)} · /Producer ${JSON.stringify(producer)}`)
+  console.log('\n--- 断言 ---')
+}
 
 add(`文件大小不是空壳（≥ ${opt.section ? 0.2 : 1} MB）`, sizeMB >= (opt.section ? 0.2 : 1), `${sizeMB.toFixed(2)} MB`)
 add(`页数与规模相称（≥ ${opt.minPages} 页）`, pages.length >= opt.minPages, `${pages.length} 页`)
