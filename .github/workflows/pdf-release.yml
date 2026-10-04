@@ -4,7 +4,18 @@ name: 生成 PDF 并发布
 # 挂到一个固定 tag 的 Release 上，下载链接保持不变（转发出去的链接不会失效）。
 #
 # 链：book/ 正文 → tools/build-site.mjs 生成 content → Hugo 在仓库根构建 public
-#     → tools/build-pdf.mjs 把站点产物打成 PDF → 上传到 Release 的固定 tag。
+#     → tools/build-pdf.mjs 把站点产物打成 PDF → 上传到 Release。
+#
+# ## 两种发布形态（2026-10-04 起）
+#
+#   1. **滚动发布 `pdf-latest`** —— push 触发时自动重建并覆盖同名资产，
+#      **下载链接固定不变**（README 公布的就是它，承诺过不变）。
+#   2. **版本化发布 `v2026.10` 这类** —— 手动触发（workflow_dispatch）并填版本号时，
+#      额外创建一个**不可变**的 Release，资产是**同一次构建的同一个文件**。
+#      tag 已存在就失败退出、不覆盖：已经公布出去的版本快照不该被悄悄改写，
+#      要修正就发新版本，旧版本留着作为可回溯的记录。
+#
+#   读者要「永远最新的下载地址」用 pdf-latest；要「我读的是哪一版」用版本号。
 #
 # 为什么 PDF 由浏览器打印而不是 pandoc/mdbook：
 #   本机与 runner 上都没有 pandoc、typst、LaTeX、LibreOffice；Hugo 本身不出 PDF。
@@ -23,6 +34,15 @@ on:
       - 'tools/build-pdf.mjs'
       - '.github/workflows/pdf-release.yml'
   workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（如 v2026.10）。留空则只更新滚动的 pdf-latest。'
+        required: false
+        type: string
+      notes:
+        description: '本版要点（可选，写进版本化 Release 的说明）'
+        required: false
+        type: string
 
 # 发布 Release 需要写 contents
 permissions:
@@ -181,3 +201,79 @@ jobs:
               done
           echo "Release 附件："
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" --jq '.assets[] | "  \(.name)  \(.size) 字节"'
+
+      # 版本化发布（只有手动触发并填了版本号才跑）。
+      #
+      # 与上面的 pdf-latest **共用同一次构建的同一个文件**——这一点不能省：
+      # 本机构建的 PDF 是 1295 页、CI 是 1341 页（runner 的中文字体不同），
+      # 拿本机产物当版本资产会让「固定版本」和「最新版」内容不一致。
+      #
+      # 说明里的数字一律现算（规模从 data/entries.json、页数从 verify-pdf 的 JSON 汇总、
+      # 大小与 SHA256 从文件本身），不写死——写死了就会和实际漂移，而这是读者用来
+      # 核对下载文件的东西。
+      - name: 发布版本化 Release（仅当填了版本号）
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.version != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          VERSION_NOTES: ${{ inputs.notes }}
+          ASSET_NAME: work-rights-cn-book.pdf
+        run: |
+          set -euo pipefail
+
+          case "$VERSION" in
+            v[0-9]*) ;;
+            *) echo "版本号必须以 v 开头（例如 v2026.10），收到的是「$VERSION」" >&2; exit 1 ;;
+          esac
+
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "版本 $VERSION 已存在。**版本化 Release 不可变**——要修正请发一个新版本。" >&2
+            exit 1
+          fi
+
+          sha=$(sha256sum "dist/劳动者的账本.pdf" | cut -d' ' -f1)
+          size=$(stat -c%s "dist/劳动者的账本.pdf")
+          # verify-pdf 的退出码在 CI 上可能是非 0（有一批「全书覆盖」类断言对字体差异
+          # 不鲁棒，见 README 与本仓库的 PDF 记录），这里**只取它的 JSON 汇总里的页数**，
+          # 不拿它当门禁——门禁由上面那一步与 verify-pdf 本体的断言负责。
+          node tools/verify-pdf.mjs "dist/劳动者的账本.pdf" --json > /tmp/pdf-summary.json || true
+          pages=$(node -e "try{console.log(require('/tmp/pdf-summary.json').pages)}catch{console.log('（页数未取到）')}")
+          scale=$(node -e "const e=require('./data/entries.json');const s=new Set(e.map(x=>x.节号));const d=e.map(x=>x['核对日期']).filter(Boolean).sort().pop();console.log(e.length+' 条 / '+s.size+' 节 · 内容核对截止 '+d)")
+
+          notesfile=$(mktemp)
+          {
+            echo "《劳动者的账本》$VERSION —— 中国大陆劳动权益与合规的循证指南。"
+            echo ""
+            echo "**$scale**"
+            echo ""
+            echo "| 项 | 值 |"
+            echo "| --- | --- |"
+            echo "| PDF 页数 | $pages 页 |"
+            echo "| 文件大小 | $((size / 1024 / 1024)) MB |"
+            echo "| SHA256 | \`$sha\` |"
+            echo "| 附件名 | \`$ASSET_NAME\` |"
+            echo "| 生成自提交 | \`${GITHUB_SHA::7}\` |"
+            echo ""
+            echo "**永远是最新的下载地址**（与本次同一个文件）："
+            echo "<https://github.com/${GITHUB_REPOSITORY}/releases/download/pdf-latest/${ASSET_NAME}>"
+            echo ""
+            echo "**使用条件**：内容采用 CC BY-NC-SA 4.0（**禁止商业使用**；转载、翻译、改编须署名并以同一许可发布），代码采用 MIT。法律原文不受著作权保护。详见站点「授权与使用」一页：<https://workersledger.cn/>"
+            echo ""
+            echo "> 本指南给通用口径，**不构成法律意见，不替代执业律师**。涉及具体案件、具体金额、正在进行的仲裁或诉讼，请找执业律师或拨打 12333。"
+            if [ -n "$VERSION_NOTES" ]; then
+              echo ""
+              echo "---"
+              echo ""
+              echo "### 本版要点"
+              echo ""
+              echo "$VERSION_NOTES"
+            fi
+          } > "$notesfile"
+
+          cp "dist/劳动者的账本.pdf" "dist/${ASSET_NAME}"
+          gh release create "$VERSION" \
+            --title "《劳动者的账本》$VERSION" \
+            --notes-file "$notesfile" \
+            "dist/${ASSET_NAME}"
+          echo "版本化 Release 已创建："
+          gh release view "$VERSION" --json tagName,url --jq '"  \(.tagName)  \(.url)"'

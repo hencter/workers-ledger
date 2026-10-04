@@ -7,6 +7,10 @@
 > PDF 随正文更新自动重建，下载地址固定不变。页数会随条目增减变化，所以这里不写死页数——
 > 想知道当前规模跑 `node tools/看板.mjs`，想核对 PDF 本身跑 `node tools/verify-pdf.mjs dist/劳动者的账本.pdf`。
 >
+> **两种版本，用途不同**：上面那个链接是**滚动版**（永远最新，链接永不失效）；
+> [Releases 页](https://github.com/hencter/workers-ledger/releases)上另有**版本化快照**（如 `v2026.10`），
+> 每个都不可变、附页数与 SHA256，适合引用「我读的是哪一版」。两者指向同一次构建的同一个文件。
+>
 > 附件名用 ASCII（`work-rights-cn-book.pdf`）是有原因的：实测 `gh release upload` 对**非 ASCII
 > 文件名会剔除字符**（上传 `重命名实验-临时.pdf` 会得到 `-.pdf`），而本地文件名一直是对的，
 > 于是公布的链接会 404 且不易察觉。中文书名留在页面上，文件名交给 ASCII。
